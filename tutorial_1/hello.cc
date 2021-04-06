@@ -27,8 +27,7 @@ int main(int argc, char** argv) {
     for (Module::const_iterator i = m.get()->getFunctionList().begin(), 
          e = m.get()->getFunctionList().end(); i != e; ++i) {
         if (!i->isDeclaration()) {
-            outs() << i->getName() << ", instCount: "
-                   << i->getInstructionCount() << "\n";
+            outs() << i->getName() << "\n";
         }
     }
 
