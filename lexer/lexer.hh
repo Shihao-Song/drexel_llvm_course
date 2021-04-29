@@ -1,7 +1,10 @@
 #ifndef __LEXER_HH__
 #define __LEXER_HH__
 
+#include <fstream>
+#include <queue>
 #include <string>
+#include <unordered_map>
 
 namespace Frontend
 {
@@ -54,21 +57,52 @@ struct Token
         TOKEN_SET
     } type = TokenType::TOKEN_ILLEGAL;
 
-    std::string literal;
+    std::string literal = "";
 
-    // struct functions
+    Token() {}
+
+    Token(const Token &_tok)
+        : type(_tok.type)
+        , literal(_tok.literal)
+    {
+    
+    }
+
+    Token(TokenType _type, std::string &_val)
+        : type(_type)
+        , literal(_val)
+    {
+    
+    }
+
     void setTokenType();
 
-    std::string prinTokenType(TokenType &tp);
+    std::string prinTokenType();
+
+    auto &getVal() { return literal; }
+
 };
 
 class Lexer
 {
+  protected:
+    // define seperators
+    std::unordered_map<char, Token::TokenType> seps;
+    // define keywords
+    std::unordered_map<std::string, Token::TokenType> keywords;
+
+  protected:
+    std::ifstream code;
+
+    std::queue<Token> toks_per_line;
 
   public:
-    Lexer(std::string &fn) {}
+    Lexer(const char*);
 
-    int getToken();
+    bool getToken(Token&);
+
+  protected:
+    void parseLine(std::string &line);
 };
 }
 
