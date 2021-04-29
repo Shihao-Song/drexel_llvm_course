@@ -111,7 +111,7 @@ bool Lexer::getToken(Token &tok)
     }
 
     assert(toks_per_line.size() != 0);
-    std::cout << "\n" << line << "\n";
+    // std::cout << "\n" << line << "\n";
     tok = toks_per_line.front();
     toks_per_line.pop();
     return true;
