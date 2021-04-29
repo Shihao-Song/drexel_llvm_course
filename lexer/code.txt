@@ -1,0 +1,9 @@
+set x = 3;
+set y = 4;
+
+set add = function(x, y)
+{
+    x + y;
+}
+
+set result = add(x, y);
