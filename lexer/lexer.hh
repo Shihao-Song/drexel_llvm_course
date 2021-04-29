@@ -79,7 +79,7 @@ struct Token
 
     std::string prinTokenType();
 
-    auto &getVal() { return literal; }
+    auto &getLiteral() { return literal; }
 
 };
 

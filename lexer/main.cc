@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
         
         std::cout << std::setw(12)
                   << tok.prinTokenType() << " | "
-                  << tok.getVal() << "\n";
+                  << tok.getLiteral() << "\n";
         
     }
 }
