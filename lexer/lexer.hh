@@ -75,8 +75,6 @@ struct Token
     
     }
 
-    void setTokenType();
-
     std::string prinTokenType();
 
     auto &getLiteral() { return literal; }
