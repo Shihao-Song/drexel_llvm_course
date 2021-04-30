@@ -1,4 +1,4 @@
-#include "lexer.hh"
+#include "lexer/lexer.hh"
 
 #include <cassert>
 #include <iostream>

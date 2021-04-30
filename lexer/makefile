@@ -1,4 +1,14 @@
-all:
-	g++ -std=c++17 main.cc lexer.cc -o main
+ROOT	:= /home/research/Documents/teaching/drexel_llvm_course
+SOURCE	:= $(ROOT)/lexer/main.cc $(ROOT)/lexer/lexer.cc
+CC	:= g++
+FLAGS	:= -O3 -std=c++17 -w 
+FLAGS	+= -I $(ROOT)
+TARGET	:= lexer
+
+all: $(TARGET)
+
+$(TARGET): $(SOURCE)
+	$(CC) $(FLAGS) $(SOURCE) -o $(TARGET)
+
 clean:
-	rm -f main
+	rm -f $(TARGET)
