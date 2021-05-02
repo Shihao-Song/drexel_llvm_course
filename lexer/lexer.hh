@@ -79,6 +79,7 @@ struct Token
 
     auto &getLiteral() { return literal; }
 
+    bool isTokenSet() { return type == TokenType::TOKEN_SET; }
 };
 
 class Lexer

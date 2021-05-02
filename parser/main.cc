@@ -8,6 +8,7 @@ using namespace Frontend;
 
 int main(int argc, char* argv[])
 {
+    /*
     // Lexer
     Lexer lexer(argv[1]);
 
@@ -20,7 +21,8 @@ int main(int argc, char* argv[])
                   << tok.getLiteral() << "\n";
         
     }
+    */
 
     // Parser
-    Parser parser();
+    Parser parser(argv[1]);
 }

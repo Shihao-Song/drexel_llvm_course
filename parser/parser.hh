@@ -7,13 +7,13 @@
 
 namespace Frontend
 {
+typedef std::unique_ptr<Lexer> LexerPtr;
 // set statement
 //     set <identifier> = <expression>;
 // Test 1:
 //     set x = 5;
 //     set y = 10;
 //     set z = 6.5;
-
 enum class StatementType : int
 {
     SET_STATEMENT,
@@ -28,6 +28,7 @@ class Statement
   public:
     Statement() {}
 };
+typedef std::unique_ptr<Statement> StatementPtr;
 	
 class Expression
 {
@@ -38,20 +39,35 @@ class Expression
 class Program
 {
   protected:
-    std::unique_ptr<Statement> statements;
+    std::vector<StatementPtr> statements;
 
   public:
     Program() {}
 };
+typedef std::unique_ptr<Program> ProgramPtr;
 
 class Parser
 {
+  protected:
+    ProgramPtr program;
 
   protected:
-    std::unique_ptr<Lexer> lexer;
+    Token cur_token;
+    Token next_token;    
+
+  protected:
+    LexerPtr lexer;
 
   public:
-    Parser() {}
+    Parser(const char* fn) 
+        : lexer(new Lexer(fn))
+    {
+        parseProgram();
+    }
+
+  protected:
+    void parseProgram();
+    bool advanceTokens();
 };
 }
 

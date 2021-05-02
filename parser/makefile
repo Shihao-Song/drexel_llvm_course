@@ -1,5 +1,7 @@
 ROOT	:= /home/research/Documents/teaching/drexel_llvm_course
-SOURCE	:= $(ROOT)/parser/main.cc $(ROOT)/lexer/lexer.cc
+SOURCE	:= $(ROOT)/parser/main.cc 
+SOURCE	+= $(ROOT)/lexer/lexer.cc
+SOURCE 	+= $(ROOT)/parser/parser.cc
 CC	:= g++
 FLAGS	:= -O3 -std=c++17 -w 
 FLAGS	+= -I $(ROOT)
