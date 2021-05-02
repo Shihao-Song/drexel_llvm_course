@@ -12,12 +12,18 @@ bool Parser::advanceTokens()
 
 void Parser::parseProgram()
 {
-    for (advanceTokens())
+    while (advanceTokens())
     {
-        StatementPtr statement = nullptr;
+        std::unique_ptr<Statement> statement = nullptr;
+        if (cur_token.isTokenSet())
+	{
+            statement = std::make_unique<SetStatement>();
+        }
 
-        
+        if (statement != nullptr)
+        {
+            program.addStatement(statement);
+        }
     }
 }
-
 }

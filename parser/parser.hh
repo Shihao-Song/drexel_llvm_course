@@ -7,7 +7,6 @@
 
 namespace Frontend
 {
-typedef std::unique_ptr<Lexer> LexerPtr;
 // set statement
 //     set <identifier> = <expression>;
 // Test 1:
@@ -28,8 +27,17 @@ class Statement
   public:
     Statement() {}
 };
-typedef std::unique_ptr<Statement> StatementPtr;
-	
+
+class SetStatement : public Statement
+{
+  public:
+    SetStatement() 
+        : Statement()
+    {
+        type = StatementType::SET_STATEMENT;
+    }
+};
+
 class Expression
 {
   public:
@@ -39,24 +47,28 @@ class Expression
 class Program
 {
   protected:
-    std::vector<StatementPtr> statements;
+    std::vector<std::unique_ptr<Statement>> statements;
 
   public:
     Program() {}
+
+    void addStatement(std::unique_ptr<Statement> &_statement)
+    {
+        statements.push_back(std::move(_statement));
+    }
 };
-typedef std::unique_ptr<Program> ProgramPtr;
 
 class Parser
 {
   protected:
-    ProgramPtr program;
+    Program program;
 
   protected:
     Token cur_token;
     Token next_token;    
 
   protected:
-    LexerPtr lexer;
+    std::unique_ptr<Lexer> lexer;
 
   public:
     Parser(const char* fn) 
