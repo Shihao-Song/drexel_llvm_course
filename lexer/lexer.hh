@@ -68,6 +68,12 @@ struct Token
     
     }
 
+    Token(TokenType _type)
+        : type(_type)
+    {
+    
+    }
+
     Token(TokenType _type, std::string &_val)
         : type(_type)
         , literal(_val)
@@ -79,7 +85,12 @@ struct Token
 
     auto &getLiteral() { return literal; }
 
+    bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
     bool isTokenSet() { return type == TokenType::TOKEN_SET; }
+    bool isTokenInt() { return type == TokenType::TOKEN_INT; }
+    bool isTokenFloat() { return type == TokenType::TOKEN_FLOAT; }
+    bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
+    bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
 };
 
 class Lexer
@@ -97,6 +108,7 @@ class Lexer
 
   public:
     Lexer(const char*);
+    ~Lexer() { code.close(); };
 
     bool getToken(Token&);
 

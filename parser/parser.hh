@@ -4,6 +4,7 @@
 #include "lexer/lexer.hh"
 
 #include <memory>
+#include <variant>
 
 namespace Frontend
 {
@@ -13,12 +14,43 @@ namespace Frontend
 //     set x = 5;
 //     set y = 10;
 //     set z = 6.5;
+
+class Identifier
+{
+  protected:
+    Token tok;
+
+  public:
+    Identifier() {}
+
+    Identifier(const Identifier &_iden) : tok(_iden.tok) {}
+
+    Identifier(Token &_tok) : tok(_tok) {}
+
+    auto& getLiteral() { return tok.getLiteral(); }
+};
+
+class Expression
+{
+  protected:
+    Token tok;
+
+  public:
+    std::variant<int, float> literal;
+    
+  public:
+    Expression() {}
+
+    Expression(const Expression &_expr) : tok(_expr.tok) {}
+
+    Expression(Token &_tok) : tok(_tok) {}
+};
+
 enum class StatementType : int
 {
     SET_STATEMENT,
     ILLEGAL
 };
-
 class Statement
 {
   protected:
@@ -27,7 +59,6 @@ class Statement
   public:
     Statement() {}
 };
-
 class SetStatement : public Statement
 {
   public:
@@ -36,12 +67,6 @@ class SetStatement : public Statement
     {
         type = StatementType::SET_STATEMENT;
     }
-};
-
-class Expression
-{
-  public:
-    Expression() {}
 };
 
 class Program
@@ -71,15 +96,14 @@ class Parser
     std::unique_ptr<Lexer> lexer;
 
   public:
-    Parser(const char* fn) 
-        : lexer(new Lexer(fn))
-    {
-        parseProgram();
-    }
+    Parser(const char* fn); 
 
   protected:
     void parseProgram();
-    bool advanceTokens();
+    void advanceTokens();
+
+    std::unique_ptr<Statement> parseSetStatement();
+    Expression parseExpression();
 };
 }
 

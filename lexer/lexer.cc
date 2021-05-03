@@ -97,7 +97,11 @@ bool Lexer::getToken(Token &tok)
     getline(code, line);
 
     // Return if EOF
-    if (code.eof()) return false;
+    if (code.eof())
+    {
+        tok = Token(Token::TokenType::TOKEN_EOF);
+        return false;
+    }
 
     // Parse the line
     parseLine(line);
@@ -106,7 +110,12 @@ bool Lexer::getToken(Token &tok)
     while (toks_per_line.size() == 0)
     {
         getline(code, line);
-        if (code.eof()) return false;
+        if (code.eof())
+        {
+            tok = Token(Token::TokenType::TOKEN_EOF);
+            return false;
+        }
+
         parseLine(line);
     }
 
