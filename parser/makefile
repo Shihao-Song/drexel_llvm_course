@@ -1,4 +1,4 @@
-ROOT	:= /home/research/Documents/teaching/drexel_llvm_course
+ROOT	:= ../../drexel_llvm_course
 SOURCE	:= $(ROOT)/parser/main.cc 
 SOURCE	+= $(ROOT)/lexer/lexer.cc
 SOURCE 	+= $(ROOT)/parser/parser.cc

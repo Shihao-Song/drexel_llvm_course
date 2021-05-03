@@ -1,4 +1,4 @@
-ROOT	:= /home/research/Documents/teaching/drexel_llvm_course
+ROOT	:= ../../drexel_llvm_course
 SOURCE	:= $(ROOT)/lexer/main.cc $(ROOT)/lexer/lexer.cc
 CC	:= g++
 FLAGS	:= -O3 -std=c++17 -w 
