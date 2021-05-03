@@ -25,4 +25,5 @@ int main(int argc, char* argv[])
 
     // Parser
     Parser parser(argv[1]);
+    parser.printStatements();
 }

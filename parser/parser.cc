@@ -38,13 +38,10 @@ void Parser::parseProgram()
 
 std::unique_ptr<Statement> Parser::parseSetStatement()
 {
-    std::unique_ptr<Statement> statement = 
-        std::make_unique<SetStatement>();
-
     advanceTokens();
     // (1) parse identifier
-    Identifier iden(cur_token);
-    std::cout << iden.getLiteral() << "\n";
+    std::unique_ptr<Identifier> iden(new Identifier(cur_token));
+    // std::cout << iden->getLiteral() << "\n";
 
     // (2) check error
     advanceTokens();
@@ -55,35 +52,53 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
         exit(0);
     }
 
-    // parse expression
+    // (3) parse expression
     advanceTokens();
-    auto expression = parseExpression();
+    auto expr = parseExpression();
 
-    // modify statement
+    // (4) prepare final statement
+    std::unique_ptr<Statement> statement = 
+        std::make_unique<SetStatement>(iden, expr);
 
     return statement;
 }
 
-Expression Parser::parseExpression()
+std::unique_ptr<Expression> Parser::parseExpression()
 {
-    Expression expression;
+    std::unique_ptr<Expression> expression;
 
     if (cur_token.isTokenInt() || cur_token.isTokenFloat())
     {
         if (next_token.isTokenSemicolon())
         {
-            if (cur_token.isTokenInt())
-            {
-                expression.literal = std::stoi(cur_token.getLiteral());
-            }
-            else
-            {
-                expression.literal = std::stof(cur_token.getLiteral());
-            }
+            expression = 
+                std::make_unique<LiteralExpression>(LiteralExpression(cur_token));
         }
     }
-
     return expression;
+}
+
+void SetStatement::printStatement()
+{
+    std::cout << "{\n";
+    std::cout << "  type: set-statement \n";
+    std::cout << "  left: " << iden->print() << "\n";
+    std::cout << "  right: "<< "\n";
+    std::cout << expr->print(1) << "\n";
+    std::cout << "}\n\n";
+}
+
+std::string LiteralExpression::print(unsigned level)
+{
+    std::string pre_brace(level * 2, ' ');
+    std::string pre_normal(level * 4, ' ');
+    std::string ret = pre_brace + "{\n";
+    ret += (pre_normal + "type: literal-expression\n");
+    ret += (pre_normal + "literal: ");
+    ret += ("{ type: " + tok.prinTokenType() + ", ");
+    ret += ("value: " + tok.getLiteral() + " } \n");
+    ret += (pre_brace + "}");
+    return ret;
 }
 
 }
