@@ -1,7 +1,5 @@
 #include "parser/parser.hh"
 
-#include <iostream>
-
 namespace Frontend
 {
 Parser::Parser(const char* fn) : lexer(new Lexer(fn))
@@ -41,7 +39,7 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
     advanceTokens();
     // (1) parse identifier
     std::unique_ptr<Identifier> iden(new Identifier(cur_token));
-    // std::cout << iden->getLiteral() << "\n";
+    // std::cout << "SET: " << iden->getLiteral() << "\n";
 
     // (2) check error
     advanceTokens();
@@ -67,38 +65,67 @@ std::unique_ptr<Expression> Parser::parseExpression()
 {
     std::unique_ptr<Expression> expression;
 
-    if (cur_token.isTokenInt() || cur_token.isTokenFloat())
+    if (cur_token.isTokenFunc())
     {
-        if (next_token.isTokenSemicolon())
+
+    }
+    else
+    {
+        // We first extract the literal expression
+        std::unique_ptr<Expression> left = 
+            std::make_unique<LiteralExpression>(cur_token);
+        // std::cout << left->print(0) << "\n";
+        advanceTokens();
+
+        while (true)
         {
-            expression = 
-                std::make_unique<LiteralExpression>(LiteralExpression(cur_token));
+            if (cur_token.isTokenPlus())
+            {
+                advanceTokens();
+                std::unique_ptr<Expression> right = 
+                    std::make_unique<LiteralExpression>(cur_token);
+                // std::cout << right->print(0) << "\n";
+                left = std::make_unique<ArithExpression>(left, 
+                           right, 
+                           Expression::ExpressionType::PLUS);
+                // std::cout << left->print(0) << "\n";
+                advanceTokens();
+            }
+            else if (cur_token.isTokenMinus())
+            {
+                advanceTokens();
+                std::unique_ptr<Expression> right = 
+                    std::make_unique<LiteralExpression>(cur_token);
+                // std::cout << right->print(0) << "\n";
+                left = std::make_unique<ArithExpression>(left, 
+                           right, 
+                           Expression::ExpressionType::MINUS);
+                // std::cout << left->print(0) << "\n";
+		advanceTokens();
+            }
+            else if (cur_token.isTokenSemicolon())
+            {
+                return left;
+            }
         }
     }
+
     return expression;
 }
 
 void SetStatement::printStatement()
 {
     std::cout << "{\n";
-    std::cout << "  type: set-statement \n";
-    std::cout << "  left: " << iden->print() << "\n";
-    std::cout << "  right: "<< "\n";
-    std::cout << expr->print(1) << "\n";
-    std::cout << "}\n\n";
+    std::cout << "  " + iden->print() << "\n";
+    std::cout << "  =\n";
+    if (expr->getType() == Expression::ExpressionType::LITERAL)
+    {
+        std::cout << "  " << expr->print(2);
+    }
+    else
+    {
+        std::cout << expr->print(2);
+    }
+    std::cout << "}\n";
 }
-
-std::string LiteralExpression::print(unsigned level)
-{
-    std::string pre_brace(level * 2, ' ');
-    std::string pre_normal(level * 4, ' ');
-    std::string ret = pre_brace + "{\n";
-    ret += (pre_normal + "type: literal-expression\n");
-    ret += (pre_normal + "literal: ");
-    ret += ("{ type: " + tok.prinTokenType() + ", ");
-    ret += ("value: " + tok.getLiteral() + " } \n");
-    ret += (pre_brace + "}");
-    return ret;
-}
-
 }

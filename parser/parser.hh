@@ -3,6 +3,7 @@
 
 #include "lexer/lexer.hh"
 
+#include <iostream>
 #include <memory>
 #include <variant>
 
@@ -30,11 +31,7 @@ class Identifier
 
     virtual std::string print()
     {
-        std::string ret = "{ ";
-        ret += ("type: " + tok.prinTokenType() + ", ");
-        ret += ("value: " + tok.getLiteral() + " }");
-
-        return ret;
+        return tok.getLiteral();
     }
 
     auto &getLiteral() { return tok.getLiteral(); }
@@ -42,21 +39,29 @@ class Identifier
 };
 
 /* Expression definition */
-enum class ExpressionType : int
-{
-    LITERAL,
-    ILLEGAL
-};
 class Expression
 {
+  public:
+    enum class ExpressionType : int
+    {
+        LITERAL,
+        PLUS,
+        MINUS,
+        ILLEGAL
+    };
+
   protected:
+
     ExpressionType type = ExpressionType::ILLEGAL;
     
   public:
     Expression() {}
 
+    auto getType() { return type; }
+
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
 };
+
 class LiteralExpression : public Expression
 {
   protected:
@@ -79,8 +84,76 @@ class LiteralExpression : public Expression
         type = ExpressionType::LITERAL;
     }
 
-    std::string print(unsigned level) override;
+    std::string print(unsigned level) override
+    {
+        return (tok.getLiteral() + "\n");
+    }
 };
+
+class ArithExpression : public Expression
+{
+  protected:
+    std::shared_ptr<Expression> left;
+    std::shared_ptr<Expression> right;
+
+  public:
+
+    ArithExpression(std::unique_ptr<Expression> &_left,
+                    std::unique_ptr<Expression> &_right,
+                    ExpressionType _type)
+    {
+        left = std::move(_left);
+        right = std::move(_right);
+        type = _type;
+    }
+
+    ArithExpression(const ArithExpression &_expr)
+    {
+        left = std::move(_expr.left);
+        right = std::move(_expr.right);
+        type = _expr.type;
+    }
+
+    std::string print(unsigned level) override
+    {
+        std::string prefix(level * 2, ' ');
+
+        std::string ret = "";
+        if (left != nullptr)
+        {
+            if (left->getType() == ExpressionType::LITERAL)
+            {
+                ret += prefix;
+            }
+
+            ret += left->print(level + 1);
+        }
+        
+        if (right != nullptr)
+        {
+            ret += prefix;
+            if (type == ExpressionType::PLUS)
+            {
+                ret += "+";
+            }
+            else if (type == ExpressionType::MINUS)
+            {
+                ret += "-";
+            }
+            ret += "\n";
+            
+            if (right->getType() == ExpressionType::LITERAL)
+            {
+                ret += prefix;
+            }
+
+            ret += right->print(level + 1);
+        }
+         
+        return ret;
+    }
+};
+
 
 /* Statement definition*/
 enum class StatementType : int
@@ -138,6 +211,8 @@ class Program
 
     void printStatements()
     {
+        std::cout << "\n\nExpressions: \n";
+
         for (auto &statement : statements) { statement->printStatement(); }
     }
 };

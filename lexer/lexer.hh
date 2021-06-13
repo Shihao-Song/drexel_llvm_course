@@ -87,8 +87,11 @@ struct Token
 
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
     bool isTokenSet() { return type == TokenType::TOKEN_SET; }
+    bool isTokenFunc() { return type == TokenType::TOKEN_FUNCTION; }
     bool isTokenInt() { return type == TokenType::TOKEN_INT; }
     bool isTokenFloat() { return type == TokenType::TOKEN_FLOAT; }
+    bool isTokenPlus() { return type == TokenType::TOKEN_PLUS; }
+    bool isTokenMinus() { return type == TokenType::TOKEN_MINUS; }
     bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
     bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
 };
