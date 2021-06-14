@@ -82,7 +82,8 @@ std::unique_ptr<Expression> Parser::parseExpression()
             advanceTokens();
 
             std::unique_ptr<Expression> right;
-            // We are trying to add/minus something with priority
+
+            // We are trying to add/minus something with higher priority
             if (cur_token.isTokenLP() || 
                 next_token.isTokenAsterisk() || 
                 next_token.isTokenSlash())
@@ -128,14 +129,22 @@ std::unique_ptr<Expression> Parser::parseTerm()
 
             advanceTokens();
 
-            std::unique_ptr<Expression> right = 
-                std::make_unique<LiteralExpression>(cur_token);
-            
+            std::unique_ptr<Expression> right;
+
+            // We are trying to mul/div something with higher priority
+            if (cur_token.isTokenLP()) 
+            {
+                right = parseTerm();
+            }
+            else
+            {
+                right = std::make_unique<LiteralExpression>(cur_token);
+                advanceTokens();
+            }
+
             left = std::make_unique<ArithExpression>(left, 
                        right, 
                        expr_type);
-
-            advanceTokens();
         }
         else
         {
@@ -147,11 +156,11 @@ std::unique_ptr<Expression> Parser::parseTerm()
     return left;
 }
 
+// Deal with () here
 std::unique_ptr<Expression> Parser::parseFactor()
-{
-    std::unique_ptr<Expression> left = 
-        std::make_unique<LiteralExpression>(cur_token);
-    
+{ 
+    std::unique_ptr<Expression> left;
+
     if (cur_token.isTokenLP())
     {
         advanceTokens();
@@ -160,7 +169,10 @@ std::unique_ptr<Expression> Parser::parseFactor()
         return left;
     }
 
+    left = std::make_unique<LiteralExpression>(cur_token);
+ 
     advanceTokens();
+
     return left;
 }
 
