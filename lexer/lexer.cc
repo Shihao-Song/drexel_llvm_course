@@ -26,6 +26,8 @@ std::string Token::prinTokenType()
             return std::string("PLUS");
         case TokenType::TOKEN_MINUS:
             return std::string("MINUS");
+        case TokenType::TOKEN_BANG:
+            return std::string("BANG");
         case TokenType::TOKEN_ASTERISK:
             return std::string("ASTERISK");
         case TokenType::TOKEN_SLASH:
@@ -66,7 +68,8 @@ Lexer::Lexer(const char* fn)
     seps.insert({'=', Token::TokenType::TOKEN_ASSIGN});
     seps.insert({'+', Token::TokenType::TOKEN_PLUS});
     seps.insert({'-', Token::TokenType::TOKEN_MINUS});
-    seps.insert({'*', Token::TokenType::TOKEN_BANG});
+    seps.insert({'!', Token::TokenType::TOKEN_BANG});
+    seps.insert({'*', Token::TokenType::TOKEN_ASTERISK});
     seps.insert({'/', Token::TokenType::TOKEN_SLASH});
     seps.insert({'<', Token::TokenType::TOKEN_LT});
     seps.insert({'>', Token::TokenType::TOKEN_GT});

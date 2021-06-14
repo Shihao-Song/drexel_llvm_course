@@ -47,6 +47,8 @@ class Expression
         LITERAL,
         PLUS,
         MINUS,
+        ASTERISK,
+        SLASH,
         ILLEGAL
     };
 
@@ -59,7 +61,9 @@ class Expression
 
     auto getType() { return type; }
 
+    virtual std::string getLiteral() { return "[Error] No implementation"; }
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
+    virtual std::string printExpr() { return "[Error] No implementation"; } 
 };
 
 class LiteralExpression : public Expression
@@ -82,6 +86,13 @@ class LiteralExpression : public Expression
     LiteralExpression(Token &_tok) : tok(_tok) 
     {
         type = ExpressionType::LITERAL;
+    }
+
+    std::string getLiteral() { return tok.getLiteral(); }
+
+    std::string printExpr() override
+    {
+        return tok.getLiteral();
     }
 
     std::string print(unsigned level) override
@@ -140,6 +151,14 @@ class ArithExpression : public Expression
             {
                 ret += "-";
             }
+            else if (type == ExpressionType::ASTERISK)
+            {
+                ret += "*";
+            }
+            else if (type == ExpressionType::SLASH)
+            {
+                ret += "/";
+            }
             ret += "\n";
             
             if (right->getType() == ExpressionType::LITERAL)
@@ -152,6 +171,54 @@ class ArithExpression : public Expression
          
         return ret;
     }
+    
+    std::string printExpr() override
+    {
+        std::string ret = "";
+        if (left != nullptr)
+        {
+            if (left->getType() == ExpressionType::LITERAL)
+            {
+                ret += left->getLiteral();
+            }
+            else
+            {
+                ret += left->printExpr();
+            }
+        }
+        
+        if (right != nullptr)
+        {
+            if (type == ExpressionType::PLUS)
+            {
+                ret += " + ";
+            }
+            else if (type == ExpressionType::MINUS)
+            {
+                ret += " - ";
+            }
+            else if (type == ExpressionType::ASTERISK)
+            {
+                ret += " * ";
+            }
+            else if (type == ExpressionType::SLASH)
+            {
+                ret += " / ";
+            }
+            
+            if (right->getType() == ExpressionType::LITERAL)
+            {
+                ret += right->getLiteral();
+            }
+            else
+            {
+                ret += right->printExpr();
+            }
+        }
+         
+        return ret;
+    }
+
 };
 
 
@@ -240,7 +307,10 @@ class Parser
     void advanceTokens();
 
     std::unique_ptr<Statement> parseSetStatement();
+
     std::unique_ptr<Expression> parseExpression();
+    std::unique_ptr<Expression> parseTerm();
+    std::unique_ptr<Expression> parseFactor();
 };
 }
 

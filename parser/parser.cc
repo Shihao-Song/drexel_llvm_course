@@ -39,7 +39,6 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
     advanceTokens();
     // (1) parse identifier
     std::unique_ptr<Identifier> iden(new Identifier(cur_token));
-    // std::cout << "SET: " << iden->getLiteral() << "\n";
 
     // (2) check error
     advanceTokens();
@@ -63,59 +62,104 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
 
 std::unique_ptr<Expression> Parser::parseExpression()
 {
-    std::unique_ptr<Expression> expression;
+    std::unique_ptr<Expression> left = 
+        std::make_unique<LiteralExpression>(cur_token);
+    
+    advanceTokens();
 
-    if (cur_token.isTokenFunc())
+    while (true)
     {
-
-    }
-    else
-    {
-        // We first extract the literal expression
-        std::unique_ptr<Expression> left = 
-            std::make_unique<LiteralExpression>(cur_token);
-        // std::cout << left->print(0) << "\n";
-        advanceTokens();
-
-        while (true)
+        if (cur_token.isTokenPlus() || 
+            cur_token.isTokenMinus())
         {
+            Expression::ExpressionType expr_type;
             if (cur_token.isTokenPlus())
             {
-                advanceTokens();
-                std::unique_ptr<Expression> right = 
-                    std::make_unique<LiteralExpression>(cur_token);
-                // std::cout << right->print(0) << "\n";
-                left = std::make_unique<ArithExpression>(left, 
-                           right, 
-                           Expression::ExpressionType::PLUS);
-                // std::cout << left->print(0) << "\n";
-                advanceTokens();
+                expr_type = Expression::ExpressionType::PLUS;
             }
-            else if (cur_token.isTokenMinus())
+            else
             {
-                advanceTokens();
-                std::unique_ptr<Expression> right = 
-                    std::make_unique<LiteralExpression>(cur_token);
-                // std::cout << right->print(0) << "\n";
-                left = std::make_unique<ArithExpression>(left, 
-                           right, 
-                           Expression::ExpressionType::MINUS);
-                // std::cout << left->print(0) << "\n";
-		advanceTokens();
+                expr_type = Expression::ExpressionType::MINUS;
             }
-            else if (cur_token.isTokenSemicolon())
+
+            advanceTokens();
+
+            std::unique_ptr<Expression> right;
+            if (next_token.isTokenAsterisk() || 
+                next_token.isTokenSlash())
             {
-                return left;
+                right = parseTerm();
             }
+            else
+            {
+                right = std::make_unique<LiteralExpression>(cur_token);
+                advanceTokens();
+            }
+
+            left = std::make_unique<ArithExpression>(left, 
+                       right, 
+                       expr_type);
+        }
+        else if (cur_token.isTokenSemicolon())
+        {
+            return left;
         }
     }
+}
 
-    return expression;
+// For Div/Mul
+std::unique_ptr<Expression> Parser::parseTerm()
+{   
+    std::unique_ptr<Expression> left = 
+        std::make_unique<LiteralExpression>(cur_token);
+    
+    advanceTokens();
+
+    while (true)
+    {
+        if (cur_token.isTokenAsterisk() || 
+            cur_token.isTokenSlash())
+        {
+            Expression::ExpressionType expr_type;
+            if (cur_token.isTokenAsterisk())
+            {
+                expr_type = Expression::ExpressionType::ASTERISK;
+            }
+            else
+            {
+                expr_type = Expression::ExpressionType::SLASH;
+            }
+
+            advanceTokens();
+
+            std::unique_ptr<Expression> right = 
+                std::make_unique<LiteralExpression>(cur_token);
+            
+            left = std::make_unique<ArithExpression>(left, 
+                       right, 
+                       expr_type);
+
+            advanceTokens();
+        }
+        else
+        {
+            break;
+        }
+
+    }
+
+    return left;
+}
+
+std::unique_ptr<Expression> Parser::parseFactor()
+{
+
 }
 
 void SetStatement::printStatement()
 {
     std::cout << "{\n";
+    std::cout << "Tree-stype: \n";
     std::cout << "  " + iden->print() << "\n";
     std::cout << "  =\n";
     if (expr->getType() == Expression::ExpressionType::LITERAL)
@@ -126,6 +170,10 @@ void SetStatement::printStatement()
     {
         std::cout << expr->print(2);
     }
+
+    std::cout << "\nExpr: \n";
+    std::cout << iden->print() << " = ";
+    std::cout << expr->printExpr() << "\n";
     std::cout << "}\n";
 }
 }

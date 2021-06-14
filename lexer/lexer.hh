@@ -92,6 +92,8 @@ struct Token
     bool isTokenFloat() { return type == TokenType::TOKEN_FLOAT; }
     bool isTokenPlus() { return type == TokenType::TOKEN_PLUS; }
     bool isTokenMinus() { return type == TokenType::TOKEN_MINUS; }
+    bool isTokenAsterisk() { return type == TokenType::TOKEN_ASTERISK; }
+    bool isTokenSlash() { return type == TokenType::TOKEN_SLASH; }
     bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
     bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
 };
