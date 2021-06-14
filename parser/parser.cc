@@ -82,7 +82,9 @@ std::unique_ptr<Expression> Parser::parseExpression()
             advanceTokens();
 
             std::unique_ptr<Expression> right;
-            if (next_token.isTokenAsterisk() || 
+            // We are trying to add/minus something with priority
+            if (cur_token.isTokenLP() || 
+                next_token.isTokenAsterisk() || 
                 next_token.isTokenSlash())
             {
                 right = parseTerm();
@@ -97,7 +99,7 @@ std::unique_ptr<Expression> Parser::parseExpression()
                        right, 
                        expr_type);
         }
-        else if (cur_token.isTokenSemicolon())
+        else
         {
             return left;
         }
@@ -107,10 +109,7 @@ std::unique_ptr<Expression> Parser::parseExpression()
 // For Div/Mul
 std::unique_ptr<Expression> Parser::parseTerm()
 {   
-    std::unique_ptr<Expression> left = 
-        std::make_unique<LiteralExpression>(cur_token);
-    
-    advanceTokens();
+    std::unique_ptr<Expression> left = parseFactor();
 
     while (true)
     {
@@ -150,7 +149,19 @@ std::unique_ptr<Expression> Parser::parseTerm()
 
 std::unique_ptr<Expression> Parser::parseFactor()
 {
+    std::unique_ptr<Expression> left = 
+        std::make_unique<LiteralExpression>(cur_token);
+    
+    if (cur_token.isTokenLP())
+    {
+        advanceTokens();
+        left = parseExpression();
+        advanceTokens();
+        return left;
+    }
 
+    advanceTokens();
+    return left;
 }
 
 void SetStatement::printStatement()
@@ -168,9 +179,9 @@ void SetStatement::printStatement()
         std::cout << expr->print(2);
     }
 
-    std::cout << "\nExpr: \n";
-    std::cout << iden->print() << " = ";
-    std::cout << expr->printExpr() << "\n";
+    // std::cout << "\nExpr: \n";
+    // std::cout << iden->print() << " = ";
+    // std::cout << expr->printExpr() << "\n";
     std::cout << "}\n";
 }
 }

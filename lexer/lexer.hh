@@ -96,6 +96,8 @@ struct Token
     bool isTokenSlash() { return type == TokenType::TOKEN_SLASH; }
     bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
     bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
+    bool isTokenLP() { return type == TokenType::TOKEN_LPAREN; }
+    bool isTokenRP() { return type == TokenType::TOKEN_RPAREN; }
 };
 
 class Lexer
