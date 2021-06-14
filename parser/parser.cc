@@ -1,5 +1,7 @@
 #include "parser/parser.hh"
 
+#include <cassert>
+
 namespace Frontend
 {
 Parser::Parser(const char* fn) : lexer(new Lexer(fn))
@@ -165,6 +167,7 @@ std::unique_ptr<Expression> Parser::parseFactor()
     {
         advanceTokens();
         left = parseExpression();
+        assert(cur_token.isTokenRP()); // Error checking
         advanceTokens();
         return left;
     }
