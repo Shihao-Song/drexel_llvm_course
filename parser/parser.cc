@@ -62,10 +62,7 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
 
 std::unique_ptr<Expression> Parser::parseExpression()
 {
-    std::unique_ptr<Expression> left = 
-        std::make_unique<LiteralExpression>(cur_token);
-    
-    advanceTokens();
+    std::unique_ptr<Expression> left = parseTerm();
 
     while (true)
     {
