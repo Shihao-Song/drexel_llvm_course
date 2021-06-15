@@ -10,14 +10,18 @@ namespace Frontend
 {
 
 /*
- * set x = 3;
- * set y = 4;
  * set add = function(x, y)
  * {
- *     x + y;
+ *     set z = x + y;
+ *     return z;
  * }
  *
- * set result = add(x, y);
+ * main()
+ * {
+ *     set x = 5;
+ *     set y = 10;
+ *     set result = add(x, y);
+ * }
  * */
 
 struct Token
@@ -53,6 +57,7 @@ struct Token
         TOKEN_RBRACE,
 
         // Keywords
+        TOKEN_MAIN, // main entrance of the program
         TOKEN_FUNCTION,
         TOKEN_SET
     } type = TokenType::TOKEN_ILLEGAL;
@@ -86,6 +91,7 @@ struct Token
     auto &getLiteral() { return literal; }
 
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
+    bool isTokenMain() { return type == TokenType::TOKEN_MAIN; }
     bool isTokenSet() { return type == TokenType::TOKEN_SET; }
     bool isTokenFunc() { return type == TokenType::TOKEN_FUNCTION; }
     bool isTokenInt() { return type == TokenType::TOKEN_INT; }

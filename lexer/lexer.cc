@@ -48,6 +48,8 @@ std::string Token::prinTokenType()
             return std::string("LBRACE");
         case TokenType::TOKEN_RBRACE:
             return std::string("RBRACE");
+        case TokenType::TOKEN_MAIN:
+            return std::string("MAIN");
         case TokenType::TOKEN_FUNCTION:
             return std::string("FUNCTION");
         case TokenType::TOKEN_SET:
@@ -81,6 +83,7 @@ Lexer::Lexer(const char* fn)
     seps.insert({'}', Token::TokenType::TOKEN_RBRACE});
 
     // fill pre-defined keywords
+    keywords.insert({"main", Token::TokenType::TOKEN_MAIN});
     keywords.insert({"set", Token::TokenType::TOKEN_SET});
     keywords.insert({"function", Token::TokenType::TOKEN_FUNCTION});
 }

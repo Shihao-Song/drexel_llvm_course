@@ -1,9 +1,12 @@
-set x = 3;
-set y = 4;
-
 set add = function(x, y)
 {
-    x + y;
+    set z = x + y;
+    return z;
 }
 
-set result = add(x, y);
+main()
+{
+    set x = 5;
+    set y = 10;
+    set result = add(x, y);
+}
