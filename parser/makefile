@@ -2,15 +2,17 @@ ROOT	:= ../../drexel_llvm_course
 SOURCE	:= $(ROOT)/parser/main.cc 
 SOURCE	+= $(ROOT)/lexer/lexer.cc
 SOURCE 	+= $(ROOT)/parser/parser.cc
-CC	:= g++
-FLAGS	:= -O3 -std=c++17 -w 
+CC	:= clang++
+FLAGS	:= -g -O3 -std=c++17 -w 
 FLAGS	+= -I $(ROOT)
+FLAGS	+= `llvm-config --cxxflags`
 TARGET	:= parser
+LD	:= `llvm-config --ldflags --system-libs --libs core`
 
 all: $(TARGET)
 
 $(TARGET): $(SOURCE)
-	$(CC) $(FLAGS) $(SOURCE) -o $(TARGET)
+	$(CC) $(FLAGS) $(SOURCE) -o $(TARGET) $(LD)
 
 clean:
 	rm -f $(TARGET)

@@ -7,15 +7,23 @@
 #include <memory>
 #include <variant>
 
+// LLVM IR codegen libraries
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+
+using namespace llvm;
+
 namespace Frontend
 {
-// set statement
-//     set <identifier> = <expression>;
-// Test 1:
-//     set x = 5;
-//     set y = 10;
-//     set z = 6.5;
-
 /* Identifier definition */
 class Identifier
 {
@@ -221,7 +229,6 @@ class ArithExpression : public Expression
 
 };
 
-
 /* Statement definition*/
 enum class StatementType : int
 {
@@ -287,6 +294,11 @@ class Program
 /* Parser definition */
 class Parser
 {
+  protected:
+    static std::unique_ptr<LLVMContext> TheContext;
+    static std::unique_ptr<Module> TheModule;
+    static std::unique_ptr<IRBuilder<>> Builder;
+
   protected:
     Program program;
 
