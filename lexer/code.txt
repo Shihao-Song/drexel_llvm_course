@@ -1,12 +1,12 @@
 def<int> add(int x, int y)
 {
-    set z = x + y;
+    set<int> z = x + y;
     return z;
 }
 
 main()
 {
-    set x = 5;
-    set y = 10;
-    set result = add(x, y);
+    set<int> x = 5;
+    set<int> y = 10;
+    set<int> result = add(x, y);
 }

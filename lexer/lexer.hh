@@ -8,21 +8,6 @@
 
 namespace Frontend
 {
-/*
- * def<int> add(int x, int y)
- * {
- *     set z = x + y;
- *     return z;
- * }
- *
- * main()
- * {
- *     set x = 5;
- *     set y = 10;
- *     set result = add(x, y);
- * }
- * */
-
 struct Token
 {
     enum class TokenType : int
