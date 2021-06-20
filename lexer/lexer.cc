@@ -50,10 +50,18 @@ std::string Token::prinTokenType()
             return std::string("RBRACE");
         case TokenType::TOKEN_MAIN:
             return std::string("MAIN");
-        case TokenType::TOKEN_FUNCTION:
-            return std::string("FUNCTION");
+        case TokenType::TOKEN_DEF:
+            return std::string("DEF");
+        case TokenType::TOKEN_RETURN:
+            return std::string("RETURN");
         case TokenType::TOKEN_SET:
             return std::string("SET");
+        case TokenType::TOKEN_DES_VOID:
+            return std::string("DES-VOID");
+        case TokenType::TOKEN_DES_INT:
+            return std::string("DES-INT");
+        case TokenType::TOKEN_DES_FLOAT:
+            return std::string("DES-FLOAT");
         default:
             std::cerr << "[Error] prinTokenType: "
                       << "unsupported token type. \n";
@@ -84,8 +92,12 @@ Lexer::Lexer(const char* fn)
 
     // fill pre-defined keywords
     keywords.insert({"main", Token::TokenType::TOKEN_MAIN});
+    keywords.insert({"def", Token::TokenType::TOKEN_DEF});
+    keywords.insert({"return", Token::TokenType::TOKEN_RETURN});
     keywords.insert({"set", Token::TokenType::TOKEN_SET});
-    keywords.insert({"function", Token::TokenType::TOKEN_FUNCTION});
+    keywords.insert({"void", Token::TokenType::TOKEN_DES_VOID});
+    keywords.insert({"int", Token::TokenType::TOKEN_DES_INT});
+    keywords.insert({"float", Token::TokenType::TOKEN_DES_FLOAT});
 }
 
 bool Lexer::getToken(Token &tok)

@@ -8,9 +8,8 @@
 
 namespace Frontend
 {
-
 /*
- * set add = function(x, y)
+ * def<int> add(int x, int y)
  * {
  *     set z = x + y;
  *     return z;
@@ -36,7 +35,7 @@ struct Token
         TOKEN_INT, // i.e., 1, 2, 3, 4, ...
         TOKEN_FLOAT, // i.e., 1.1, 1.2, ...
 
-        // Operators
+                // Operators
         TOKEN_ASSIGN,
         TOKEN_PLUS,
         TOKEN_MINUS,
@@ -58,8 +57,15 @@ struct Token
 
         // Keywords
         TOKEN_MAIN, // main entrance of the program
-        TOKEN_FUNCTION,
-        TOKEN_SET
+        TOKEN_DEF,
+        TOKEN_RETURN,
+        TOKEN_SET,
+		
+        // For function/argument type
+        // DES - description
+        TOKEN_DES_VOID,
+        TOKEN_DES_INT,
+        TOKEN_DES_FLOAT,
     } type = TokenType::TOKEN_ILLEGAL;
 
     std::string literal = "";
@@ -92,8 +98,13 @@ struct Token
 
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
     bool isTokenMain() { return type == TokenType::TOKEN_MAIN; }
+    bool isTokenDef() { return type == TokenType::TOKEN_DEF; }
+    bool isTokenReturn() { return type == TokenType::TOKEN_RETURN; }
     bool isTokenSet() { return type == TokenType::TOKEN_SET; }
-    bool isTokenFunc() { return type == TokenType::TOKEN_FUNCTION; }
+    bool isTokenDesVoid() { return type == TokenType::TOKEN_DES_VOID; }
+    bool isTokenDesInt() { return type == TokenType::TOKEN_DES_INT; }
+    bool isTokenDesFloat() { return type == TokenType::TOKEN_DES_FLOAT; }
+
     bool isTokenInt() { return type == TokenType::TOKEN_INT; }
     bool isTokenFloat() { return type == TokenType::TOKEN_FLOAT; }
     bool isTokenPlus() { return type == TokenType::TOKEN_PLUS; }
@@ -101,9 +112,15 @@ struct Token
     bool isTokenAsterisk() { return type == TokenType::TOKEN_ASTERISK; }
     bool isTokenSlash() { return type == TokenType::TOKEN_SLASH; }
     bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
+
     bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
     bool isTokenLP() { return type == TokenType::TOKEN_LPAREN; }
     bool isTokenRP() { return type == TokenType::TOKEN_RPAREN; }
+    bool isTokenLB() { return type == TokenType::TOKEN_LBRACE; }
+    bool isTokenRB() { return type == TokenType::TOKEN_RBRACE; }
+
+    bool isTokenLT() { return type == TokenType::TOKEN_LT; }
+    bool isTokenGT() { return type == TokenType::TOKEN_GT; }
 };
 
 class Lexer

@@ -22,7 +22,16 @@ void Parser::parseProgram()
 {
     while (!cur_token.isTokenEOF())
     {
+        std::unique_ptr<Statement> statement;
+
+        if (cur_token.isTokenMain())
+        {
+            std::cerr << "[parseProgram] Main Entrance\n";
+        }
+
+        /*
         std::unique_ptr<Statement> statement = nullptr;
+
         if (cur_token.isTokenSet())
 	{
             statement = parseSetStatement();
@@ -32,6 +41,7 @@ void Parser::parseProgram()
         {
             program.addStatement(statement);
         }
+        */
         advanceTokens();
     }
 }

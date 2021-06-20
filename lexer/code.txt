@@ -1,4 +1,4 @@
-set add = function(x, y)
+def<int> add(int x, int y)
 {
     set z = x + y;
     return z;

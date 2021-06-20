@@ -8,6 +8,7 @@
 #include <variant>
 
 // LLVM IR codegen libraries
+// TODO - shihao, I think we should have a separate codegen class
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -31,8 +32,6 @@ class Identifier
     Token tok;
 
   public:
-    Identifier() {}
-
     Identifier(const Identifier &_iden) : tok(_iden.tok) {}
 
     Identifier(Token &_tok) : tok(_tok) {}
@@ -52,11 +51,16 @@ class Expression
   public:
     enum class ExpressionType : int
     {
-        LITERAL,
-        PLUS,
-        MINUS,
-        ASTERISK,
-        SLASH,
+        LITERAL, // i.e., 1
+
+        PLUS, // i.e., 1 + 2
+        MINUS, // i.e., 1 - 2
+        ASTERISK, // i.e., 1 * 2
+        SLASH, // i.e., 1 / 2
+
+        CALL, // TODO-shihao
+        RETURN, // TODO-shihao
+
         ILLEGAL
     };
 
@@ -71,7 +75,6 @@ class Expression
 
     virtual std::string getLiteral() { return "[Error] No implementation"; }
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
-    virtual std::string printExpr() { return "[Error] No implementation"; } 
 };
 
 class LiteralExpression : public Expression
@@ -80,11 +83,6 @@ class LiteralExpression : public Expression
     Token tok;
     
   public:
-    LiteralExpression() 
-    {
-        type = ExpressionType::LITERAL;
-    }
-
     LiteralExpression(const LiteralExpression &_expr) 
     {
         tok = _expr.tok;
@@ -98,11 +96,7 @@ class LiteralExpression : public Expression
 
     std::string getLiteral() { return tok.getLiteral(); }
 
-    std::string printExpr() override
-    {
-        return tok.getLiteral();
-    }
-
+    // Debug print associated with the print in ArithExp
     std::string print(unsigned level) override
     {
         return (tok.getLiteral() + "\n");
@@ -112,11 +106,14 @@ class LiteralExpression : public Expression
 class ArithExpression : public Expression
 {
   protected:
+    // Unique is also good but it will incur errors when
+    // invoking copy constructors
     std::shared_ptr<Expression> left;
     std::shared_ptr<Expression> right;
 
   public:
 
+    // unique can be easily converted to shared
     ArithExpression(std::unique_ptr<Expression> &_left,
                     std::unique_ptr<Expression> &_right,
                     ExpressionType _type)
@@ -133,6 +130,7 @@ class ArithExpression : public Expression
         type = _expr.type;
     }
 
+    // Debug print
     std::string print(unsigned level) override
     {
         std::string prefix(level * 2, ' ');
@@ -179,64 +177,19 @@ class ArithExpression : public Expression
          
         return ret;
     }
-    
-    std::string printExpr() override
-    {
-        std::string ret = "";
-        if (left != nullptr)
-        {
-            if (left->getType() == ExpressionType::LITERAL)
-            {
-                ret += left->getLiteral();
-            }
-            else
-            {
-                ret += left->printExpr();
-            }
-        }
-        
-        if (right != nullptr)
-        {
-            if (type == ExpressionType::PLUS)
-            {
-                ret += " + ";
-            }
-            else if (type == ExpressionType::MINUS)
-            {
-                ret += " - ";
-            }
-            else if (type == ExpressionType::ASTERISK)
-            {
-                ret += " * ";
-            }
-            else if (type == ExpressionType::SLASH)
-            {
-                ret += " / ";
-            }
-            
-            if (right->getType() == ExpressionType::LITERAL)
-            {
-                ret += right->getLiteral();
-            }
-            else
-            {
-                ret += right->printExpr();
-            }
-        }
-         
-        return ret;
-    }
-
 };
 
 /* Statement definition*/
-enum class StatementType : int
-{
-    SET_STATEMENT,
-    ILLEGAL
-};
 class Statement
 {
+  public:
+    enum class StatementType : int
+    {
+        SET_STATEMENT,
+        FUNC_STATEMENT,
+        ILLEGAL
+    };
+
   protected:
     StatementType type = StatementType::ILLEGAL;
 
@@ -245,18 +198,15 @@ class Statement
 
     virtual void printStatement() {}
 };
+
 class SetStatement : public Statement
 {
   protected:
-    std::unique_ptr<Identifier> iden;
-    std::unique_ptr<Expression> expr;
+    // using shared due to copy constructors
+    std::shared_ptr<Identifier> iden;
+    std::shared_ptr<Expression> expr;
 
   public:
-    SetStatement() 
-    {
-        type = StatementType::SET_STATEMENT;
-    }
-
     SetStatement(std::unique_ptr<Identifier> &_iden,
                  std::unique_ptr<Expression> &_expr)
     {
@@ -266,7 +216,76 @@ class SetStatement : public Statement
         expr = std::move(_expr);
     }
     
+    SetStatement(const SetStatement &_statement)
+    {
+        iden = std::move(_statement.iden);
+        expr = std::move(_statement.expr);
+        type = _statement.type;
+    }
+
     void printStatement() override;
+};
+
+class FuncStatement : public Statement
+{
+  public:
+    enum class FuncType : int
+    {
+        // So far, we only support function type to be
+        // void, int, or float
+        VOID, INT, FLOAT, MAX
+    };
+
+    class Argument
+    {
+      public:
+        enum class ArgumentType : int
+        {
+            // So far, we only support argument type to be
+            // integer or float
+            INT, FLOAT, MAX
+        };
+
+      protected:
+        ArgumentType type = ArgumentType::MAX;
+        Token tok;
+
+      public:
+        Argument(ArgumentType _type, Token &_tok)
+            : type(_type), tok(_tok)
+        {}
+    };
+
+  protected:
+    // using shared due to copy constructors
+    FuncType func_type;
+    std::shared_ptr<Identifier> iden;
+    std::vector<Argument> args;
+    std::vector<std::shared_ptr<Statement>> codes;
+
+  public:
+    FuncStatement(FuncType _type,
+                  std::unique_ptr<Identifier> &_iden,
+                  std::vector<Argument> &_args,
+                  std::vector<std::shared_ptr<Statement>> &_codes)
+    {
+        type = StatementType::FUNC_STATEMENT;
+
+        func_type = _type;
+        iden = std::move(_iden);
+        args = _args;
+        codes = std::move(_codes);
+    }
+    
+    FuncStatement(const FuncStatement &_statement)
+    {
+        type = _statement.type;
+
+        func_type = _statement.func_type;
+        iden = std::move(_statement.iden);
+        args = _statement.args;
+        codes = std::move(_statement.codes);
+    }
 };
 
 /* Program definition */
