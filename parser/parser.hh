@@ -249,6 +249,7 @@ class SetStatement : public Statement
 class FuncStatement : public Statement
 {
   public:
+    // TODO-shihao, should be renamed to RetType
     enum class FuncType : int
     {
         // So far, we only support function type to be
@@ -394,6 +395,10 @@ class Parser
         assert(check == cur_expr_type && 
                "[Error] Strict type check failed or undefined variable");
     }
+
+  protected:
+    std::unordered_map<std::string,std::vector<Token::TokenType>>
+        func_tracker;
 
   protected:
     std::unique_ptr<Lexer> lexer;

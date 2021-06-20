@@ -64,7 +64,7 @@ void Parser::parseProgram()
             }
             else
             {
-                std::cerr << "[parseProgram] Unsupported Return Type\n";
+                std::cerr << "[Error] parseProgram: unsupported return type\n";
                 exit(0);
             }
             
@@ -73,6 +73,20 @@ void Parser::parseProgram()
 
             advanceTokens();
             iden = std::make_unique<Identifier>(cur_token);
+            if (auto f_iter = func_tracker.find(cur_token.getLiteral());
+                      f_iter == func_tracker.end())
+            {
+                std::vector<Token::TokenType> init;
+                func_tracker.insert({cur_token.getLiteral(), init});
+            }
+            else
+            {
+                std::cerr << "[Error] parseProgram: "
+                          << "duplicated function definition. "
+                          << std::endl;
+
+                exit(0);
+            }
 
             advanceTokens();
             assert(cur_token.isTokenLP());
@@ -114,6 +128,7 @@ void Parser::parseProgram()
                         {cur_token.getLiteral(), type_track});
                 }
                 args.emplace_back(arg_type, cur_token);
+
 
                 advanceTokens();
             }
@@ -217,10 +232,6 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
             t_iter != local_var_type_tracker.end())
     {
         t_iter->second = var_type;
-        // std::cout << "[Error] parseSetStatement: "
-        //           << "duplicated variable definition."
-        //           << std::endl;
-        // exit(0);
     }
     else
     {
@@ -409,7 +420,8 @@ void FuncStatement::printStatement()
     {
         std::cout << "    " << arg.print() << "\n";
     }
-    
+    if (!args.size()) std::cout << "    NONE\n";
+
     std::cout << "  Codes\n";
     std::cout << "  {\n";
     for (auto &code : codes)
