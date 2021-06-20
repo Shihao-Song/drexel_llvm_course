@@ -59,7 +59,6 @@ class Expression
         SLASH, // i.e., 1 / 2
 
         CALL, // TODO-shihao
-        RETURN, // TODO-shihao
 
         ILLEGAL
     };
@@ -187,6 +186,7 @@ class Statement
     {
         SET_STATEMENT,
         FUNC_STATEMENT,
+        RET_STATEMENT,
         ILLEGAL
     };
 
@@ -197,6 +197,26 @@ class Statement
     Statement() {}
 
     virtual void printStatement() {}
+};
+
+class RetStatement : public Statement
+{
+  protected:
+    std::string ret;
+
+  public:
+    RetStatement(std::string &_ret) : ret(_ret)
+    {
+        type = StatementType::RET_STATEMENT;
+    }
+
+    RetStatement(const RetStatement &_statement)
+    {
+        type = _statement.type;
+        ret = _statement.ret;
+    }
+    
+    void printStatement() override;
 };
 
 class SetStatement : public Statement
@@ -251,9 +271,27 @@ class FuncStatement : public Statement
         Token tok;
 
       public:
-        Argument(ArgumentType _type, Token &_tok)
-            : type(_type), tok(_tok)
-        {}
+        Argument(std::string &_type, Token &_tok)
+        {
+            if (_type == "int") type = ArgumentType::INT;
+            else if (_type == "float") type = ArgumentType::FLOAT;
+            else type = ArgumentType::MAX;
+
+            assert(type != ArgumentType::MAX);
+
+            tok = _tok;
+        }
+
+        std::string print()
+        {
+            std::string ret = "";
+            if (type == ArgumentType::INT) ret += "int : ";
+            else if (type == ArgumentType::FLOAT) ret += "float : ";
+
+            ret += tok.getLiteral();
+
+            return ret;
+        }
     };
 
   protected:
@@ -262,6 +300,10 @@ class FuncStatement : public Statement
     std::shared_ptr<Identifier> iden;
     std::vector<Argument> args;
     std::vector<std::shared_ptr<Statement>> codes;
+
+  // protected:
+    // Track each local variable's type
+    // std::unordered_map<std::string,Token> local_var_type_tracker;
 
   public:
     FuncStatement(FuncType _type,
@@ -286,6 +328,13 @@ class FuncStatement : public Statement
         args = _statement.args;
         codes = std::move(_statement.codes);
     }
+    
+    void printStatement() override;
+
+    // void recordLocalVarType(std::unordered_map<std::string,Token> &_tracker)
+    // {
+    //     local_var_type_tracker = _tracker;
+    // }
 };
 
 /* Program definition */
@@ -304,8 +353,6 @@ class Program
 
     void printStatements()
     {
-        std::cout << "\n\nExpressions: \n";
-
         for (auto &statement : statements) { statement->printStatement(); }
     }
 };
@@ -313,6 +360,7 @@ class Program
 /* Parser definition */
 class Parser
 {
+  // TODO, should we put here?
   protected:
     static std::unique_ptr<LLVMContext> TheContext;
     static std::unique_ptr<Module> TheModule;
@@ -324,6 +372,28 @@ class Parser
   protected:
     Token cur_token;
     Token next_token;    
+
+  protected:
+    // We force all the elements inside an expression with the
+    // same type.
+    Token::TokenType cur_expr_type;
+
+    // Track each local variable's type
+    std::unordered_map<std::string,Token::TokenType> local_var_type_tracker;
+
+    void strictTypeCheck(Token &_tok)
+    {
+        auto check = _tok.getTokenType();
+
+        if (auto t_iter = local_var_type_tracker.find(_tok.getLiteral());
+                t_iter != local_var_type_tracker.end())
+        {
+            check = t_iter->second;
+        }
+
+        assert(check == cur_expr_type && 
+               "[Error] Strict type check failed or undefined variable");
+    }
 
   protected:
     std::unique_ptr<Lexer> lexer;

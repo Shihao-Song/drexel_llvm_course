@@ -1,0 +1,12 @@
+def<int> add(int x, int y)
+{
+    set<int> z = x + y;
+    return z;
+}
+
+main()
+{
+    set<int> x = 5;
+    set<int> y = 10;
+    set<int> result = add(x, y);
+}

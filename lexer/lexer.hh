@@ -35,7 +35,7 @@ struct Token
         TOKEN_INT, // i.e., 1, 2, 3, 4, ...
         TOKEN_FLOAT, // i.e., 1.1, 1.2, ...
 
-                // Operators
+        // Operators
         TOKEN_ASSIGN,
         TOKEN_PLUS,
         TOKEN_MINUS,
@@ -95,6 +95,7 @@ struct Token
     std::string prinTokenType();
 
     auto &getLiteral() { return literal; }
+    auto &getTokenType() { return type; }
 
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
     bool isTokenMain() { return type == TokenType::TOKEN_MAIN; }
@@ -113,6 +114,7 @@ struct Token
     bool isTokenSlash() { return type == TokenType::TOKEN_SLASH; }
     bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
 
+    bool isTokenComma() { return type == TokenType::TOKEN_COMMA; }
     bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
     bool isTokenLP() { return type == TokenType::TOKEN_LPAREN; }
     bool isTokenRP() { return type == TokenType::TOKEN_RPAREN; }
