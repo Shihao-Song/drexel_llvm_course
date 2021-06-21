@@ -1,0 +1,16 @@
+def<int> add(int x, int y)
+{
+    set<int> z = x + y;
+    return z;
+}
+
+main()
+{
+    set<int> x = 5;
+    set<int> y = 10;
+    set<int> result = add(x, y);
+    set<int> z = 7 + 3 * (10 / (12 / add(3, 1) - 1));
+    set<int> z = add(5, 3) * 12  + add(3, 4) * (10 + 5);
+    set<int> z = 1 + 2 * add(3, 4) + 5 * 8;
+    set<int> z = 1 + 2 + add(3, 4) + (5 + 6);
+}

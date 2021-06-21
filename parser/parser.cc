@@ -4,16 +4,29 @@ namespace Frontend
 {
 Parser::Parser(const char* fn) : lexer(new Lexer(fn))
 {
-    lexer->getToken(cur_token);
-    lexer->getToken(next_token);
+    // Pre-load all the tokens
+    Token tok;
+    while (lexer->getToken(tok))
+    {
+        tokens.push_back(tok);
+    }
+    tokens.push_back(tok);
+
+    cur_token = tokens[token_index];
+    next_token = tokens[token_index + 1];
 
     parseProgram();
 }
 
 void Parser::advanceTokens()
 {
-    cur_token = next_token;
-    lexer->getToken(next_token);
+    token_index += 1;
+    if (token_index == tokens.size()) return;
+
+    cur_token = tokens[token_index];
+
+    if ((token_index + 1) == tokens.size()) return;
+    next_token = tokens[token_index + 1];
 }
 
 void Parser::parseProgram()
@@ -73,7 +86,6 @@ void Parser::parseProgram()
             // function name
             advanceTokens();
             iden = std::make_unique<Identifier>(cur_token);
-            // TODO-shihao, record the function information, i.e., return type, argument types
 
             advanceTokens();
             assert(cur_token.isTokenLP());
@@ -96,6 +108,9 @@ void Parser::parseProgram()
 
             advanceTokens();
             assert(cur_token.isTokenLB());
+
+            // record function def
+            recordDefs(iden->getLiteral(), ret_type, args);
         }
 
         // parse the codes section
@@ -105,6 +120,7 @@ void Parser::parseProgram()
             if (cur_token.isTokenSet())
             {
                 auto code = parseSetStatement();
+                // code->printStatement();
                 codes.push_back(std::move(code));
             }
             else if (cur_token.isTokenReturn())
@@ -115,6 +131,7 @@ void Parser::parseProgram()
 
                 std::unique_ptr<RetStatement> ret_statement = 
                     std::make_unique<RetStatement>(cur_token.getLiteral());
+                // ret_statement->printStatement();
 
                 codes.push_back(std::move(ret_statement));
             }
@@ -189,15 +206,19 @@ std::unique_ptr<Expression> Parser::parseExpression()
 
             // We are trying to add/minus something with higher priority
             if (cur_token.isTokenLP() || 
-                next_token.isTokenAsterisk() || 
-                next_token.isTokenSlash())
+                peakNextArithOpr().isTokenAsterisk() || 
+                peakNextArithOpr().isTokenSlash())
             {
                 right = parseTerm();
             }
             else
             {
                 strictTypeCheck(cur_token);
-                right = std::make_unique<LiteralExpression>(cur_token);
+                // check if it is a function call
+                if (isFuncDef(cur_token.getLiteral()))
+                    right = parseCall();
+                else
+                    right = std::make_unique<LiteralExpression>(cur_token);
                 advanceTokens();
             }
 
@@ -244,7 +265,11 @@ std::unique_ptr<Expression> Parser::parseTerm()
             else
             {
                 strictTypeCheck(cur_token);
-                right = std::make_unique<LiteralExpression>(cur_token);
+                // check if it is a function call
+                if (isFuncDef(cur_token.getLiteral()))
+                    right = parseCall();
+                else
+                    right = std::make_unique<LiteralExpression>(cur_token);
                 advanceTokens();
             }
 
@@ -277,11 +302,41 @@ std::unique_ptr<Expression> Parser::parseFactor()
     }
 
     strictTypeCheck(cur_token);
-    left = std::make_unique<LiteralExpression>(cur_token);
+    if (isFuncDef(cur_token.getLiteral()))
+        left = parseCall();
+    else
+        left = std::make_unique<LiteralExpression>(cur_token);
  
     advanceTokens();
 
     return left;
+}
+
+std::unique_ptr<Expression> Parser::parseCall()
+{
+    Token def_tok = cur_token;
+
+    advanceTokens();
+    assert(cur_token.isTokenLP());
+
+    advanceTokens();
+    std::vector<Token> args;
+    while (!cur_token.isTokenRP())
+    {
+        if (cur_token.isTokenComma()) advanceTokens();
+
+        args.push_back(cur_token);
+        advanceTokens();
+    }
+
+    strictTypeCheck(def_tok, args);
+
+    std::unique_ptr<CallExpression> ret = 
+        std::make_unique<CallExpression>(def_tok, args);
+
+    // advanceTokens();
+
+    return ret;
 }
 
 void RetStatement::printStatement()
@@ -297,7 +352,8 @@ void SetStatement::printStatement()
     std::cout << "    {\n";
     std::cout << "      " + iden->print() << "\n";
     std::cout << "      =\n";
-    if (expr->getType() == Expression::ExpressionType::LITERAL)
+    if (expr->getType() == Expression::ExpressionType::LITERAL ||
+        expr->getType() == Expression::ExpressionType::CALL)
     {
         std::cout << "      " << expr->print(4);
     }

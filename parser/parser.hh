@@ -77,6 +77,39 @@ class Expression
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
 };
 
+class CallExpression : public Expression
+{
+  protected:
+    Token def;
+    std::vector<Token> args;  
+
+  public:
+    CallExpression(const CallExpression &_expr) 
+    {
+        def = _expr.def;
+        args = _expr.args;
+        type = ExpressionType::CALL;
+    }
+
+    CallExpression(Token &_tok, std::vector<Token> _args) 
+        : def(_tok)
+        , args(_args)
+    {
+        type = ExpressionType::CALL;
+    }
+
+    // Debug print associated with the print in ArithExp
+    std::string print(unsigned level) override
+    {
+        std::string ret = "[CALL] " + def.getLiteral()
+                        + " [ARGS] ";
+        for (auto &arg : args) ret += (arg.getLiteral() + " ");
+
+	ret += "\n";
+        return ret;
+    }
+};
+
 class LiteralExpression : public Expression
 {
   protected:
@@ -138,7 +171,8 @@ class ArithExpression : public Expression
         std::string ret = "";
         if (left != nullptr)
         {
-            if (left->getType() == ExpressionType::LITERAL)
+            if (left->getType() == ExpressionType::LITERAL || 
+                left->getType() == ExpressionType::CALL)
             {
                 ret += prefix;
             }
@@ -167,7 +201,8 @@ class ArithExpression : public Expression
             }
             ret += "\n";
             
-            if (right->getType() == ExpressionType::LITERAL)
+            if (right->getType() == ExpressionType::LITERAL || 
+                right->getType() == ExpressionType::CALL)
             {
                 ret += prefix;
             }
@@ -366,8 +401,23 @@ class Parser
     Program program;
 
   protected:
+    uint32_t token_index = 0;
     Token cur_token;
     Token next_token;    
+
+    Token peakNextArithOpr()
+    {
+        auto iter = token_index + 1;
+        while (true)
+        {
+            if (iter == tokens.size()) 
+                return Token(Token::TokenType::TOKEN_EOF);
+
+            Token &cur_tok = tokens[iter];
+            if (cur_tok.isTokenArithOpr()) return cur_tok;
+            iter++;
+        }
+    }
 
   protected:
     /************* Section one - record local variable types ***************/
@@ -419,7 +469,7 @@ class Parser
         }
         else
         {
-            std::cerr << "[Error] parseSetStatement: "
+            std::cerr << "[Error] recordLocalVars: "
                       << "unsupported variable type."
                       << std::endl;
             exit(0);
@@ -429,12 +479,59 @@ class Parser
         local_var_type_tracker[_tok.getLiteral()] = var_type;
     }
 
+    /************* Section two - record function informatoin ****************/
+    struct FuncRecord
+    {
+        TypeRecord ret_type;
+        std::vector<TypeRecord> arg_types;
+
+        FuncRecord() {}
+    };
+    std::unordered_map<std::string,FuncRecord> func_def_tracker;
+    void recordDefs(std::string &_def,
+                    FuncStatement::RetType _type,
+                    std::vector<FuncStatement::Argument> &_args)
+    {
+        auto iter = func_def_tracker.find(_def);
+        assert(iter == func_def_tracker.end() && "duplicated def");
+
+        FuncRecord record;
+        auto &ret_type = record.ret_type;
+        if (_type == FuncStatement::RetType::INT)
+            ret_type = TypeRecord::INT;
+        else if (_type == FuncStatement::RetType::FLOAT)
+            ret_type = TypeRecord::FLOAT;
+        else
+            assert(false && "unsupported return type");
+
+        auto &arg_types = record.arg_types;
+        for (auto &arg : _args)
+        {
+            if (arg.isArgInt()) arg_types.push_back(TypeRecord::INT);
+            else if (arg.isArgFloat()) arg_types.push_back(TypeRecord::FLOAT);
+            else assert(false && "unsupported argument type");
+        }
+        
+        func_def_tracker[_def] = record;
+    }
+
+    bool isFuncDef(std::string &_def)
+    {
+        if (auto iter = func_def_tracker.find(_def);
+                iter != func_def_tracker.end())
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
     /***************** Section two - strict type checking ******************/
 
     // We force all the elements inside an EXPRESSION with the
     // same type.
     TypeRecord cur_expr_type;
-
     // strictTypeCheck v1 - check the token has the same type as the
     // cur_expr_type.
     void strictTypeCheck(Token &_tok)
@@ -445,7 +542,7 @@ class Parser
                or undefined variable");
     }
     // strictTypeCheck v2 - check the token has the same type as the specified
-    // function, usually for return statement
+    // function return type, usually for return statement
     void strictTypeCheck(Token &_tok, FuncStatement::RetType _type)
     {
         TypeRecord tok_type = getTokenType(_tok);
@@ -460,6 +557,24 @@ class Parser
                "[Error] Inconsistent return type \
                or undefined variable");
     }
+    // strictTypeCheck v3 - check if the passed tokens have the same type as
+    // the function def
+    void strictTypeCheck(Token &_def_tok, std::vector<Token> args)
+    {
+        auto iter = func_def_tracker.find(_def_tok.getLiteral());
+        assert(iter != func_def_tracker.end());
+
+        auto &ans = iter->second.arg_types;
+        assert(ans.size() == args.size() &&
+               "#params don't match");
+
+        for (auto i = 0; i < args.size(); i++)
+        {
+            TypeRecord arg_type = getTokenType(args[i]);
+            assert(arg_type == ans[i] && 
+                   "param types don't match");
+        }
+    }
 
     TypeRecord getTokenType(Token &_tok)
     {
@@ -469,19 +584,25 @@ class Parser
         else tok_type = TypeRecord::MAX;
 
         // If the token is a variable, we need extract its recorded type
-        if (auto t_iter = local_var_type_tracker.find(_tok.getLiteral());
-                t_iter != local_var_type_tracker.end())
+        if (auto iter = local_var_type_tracker.find(_tok.getLiteral());
+                iter != local_var_type_tracker.end())
         {
-            tok_type = t_iter->second;
+            tok_type = iter->second;
         }
 
-        // TODO - If the token is function name, we need to extract its
+        // If the token is function name, we need to extract its
         // recorded type.
+        if (auto iter = func_def_tracker.find(_tok.getLiteral());
+                iter != func_def_tracker.end())
+        {
+            tok_type = iter->second.ret_type;
+        }
         
         return tok_type;
     }
 
   protected:
+    std::vector<Token> tokens;
     std::unique_ptr<Lexer> lexer;
 
   public:
@@ -498,6 +619,7 @@ class Parser
     std::unique_ptr<Expression> parseExpression();
     std::unique_ptr<Expression> parseTerm();
     std::unique_ptr<Expression> parseFactor();
+    std::unique_ptr<Expression> parseCall();
 };
 }
 

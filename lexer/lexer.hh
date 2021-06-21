@@ -97,6 +97,11 @@ struct Token
     bool isTokenMinus() { return type == TokenType::TOKEN_MINUS; }
     bool isTokenAsterisk() { return type == TokenType::TOKEN_ASTERISK; }
     bool isTokenSlash() { return type == TokenType::TOKEN_SLASH; }
+    bool isTokenArithOpr() 
+    {
+        return (isTokenPlus() || isTokenMinus() || 
+                isTokenAsterisk() || isTokenSlash());
+    }
     bool isTokenEqual() { return type == TokenType::TOKEN_ASSIGN; }
 
     bool isTokenComma() { return type == TokenType::TOKEN_COMMA; }
