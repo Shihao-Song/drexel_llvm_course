@@ -3,6 +3,7 @@
 
 #include "lexer/lexer.hh"
 
+#include <cassert>
 #include <iostream>
 #include <memory>
 #include <variant>
@@ -249,10 +250,9 @@ class SetStatement : public Statement
 class FuncStatement : public Statement
 {
   public:
-    // TODO-shihao, should be renamed to RetType
-    enum class FuncType : int
+    enum class RetType : int
     {
-        // So far, we only support function type to be
+        // So far, we only support function return type to be
         // void, int, or float
         VOID, INT, FLOAT, MAX
     };
@@ -293,21 +293,21 @@ class FuncStatement : public Statement
 
             return ret;
         }
+
+        std::string &getLiteral() { return tok.getLiteral(); }
+        bool isArgInt() { return type == ArgumentType::INT; }
+        bool isArgFloat() { return type == ArgumentType::FLOAT; }
     };
 
   protected:
     // using shared due to copy constructors
-    FuncType func_type;
+    RetType func_type;
     std::shared_ptr<Identifier> iden;
     std::vector<Argument> args;
     std::vector<std::shared_ptr<Statement>> codes;
 
-  // protected:
-    // Track each local variable's type
-    // std::unordered_map<std::string,Token> local_var_type_tracker;
-
   public:
-    FuncStatement(FuncType _type,
+    FuncStatement(RetType _type,
                   std::unique_ptr<Identifier> &_iden,
                   std::vector<Argument> &_args,
                   std::vector<std::shared_ptr<Statement>> &_codes)
@@ -331,11 +331,6 @@ class FuncStatement : public Statement
     }
     
     void printStatement() override;
-
-    // void recordLocalVarType(std::unordered_map<std::string,Token> &_tracker)
-    // {
-    //     local_var_type_tracker = _tracker;
-    // }
 };
 
 /* Program definition */
@@ -375,30 +370,116 @@ class Parser
     Token next_token;    
 
   protected:
-    // We force all the elements inside an expression with the
-    // same type.
-    Token::TokenType cur_expr_type;
+    /************* Section one - record local variable types ***************/
+    enum class TypeRecord : int
+    {
+        INT, FLOAT, MAX
+    };
 
     // Track each local variable's type
-    std::unordered_map<std::string,Token::TokenType> local_var_type_tracker;
+    std::unordered_map<std::string,TypeRecord> local_var_type_tracker;
 
+    // recordLocalVars v1 - record the arguments
+    void recordLocalVars(FuncStatement::Argument &arg)
+    {
+        // determine argument type
+        TypeRecord arg_type = TypeRecord::MAX;
+        if (arg.isArgInt()) arg_type = TypeRecord::INT;
+        else if (arg.isArgFloat()) arg_type = TypeRecord::FLOAT;
+        assert(arg_type != TypeRecord::MAX);
+
+        // argument name can not be duplicated
+        auto arg_name = arg.getLiteral();
+
+        if (auto iter = local_var_type_tracker.find(arg_name);
+                iter != local_var_type_tracker.end())
+        {
+            std::cerr << "[Error] recordLocalVars: "
+                      << "duplicated variable definition."
+                      << std::endl;
+            exit(0);
+        }
+        else
+        {
+            local_var_type_tracker.insert({arg_name, arg_type});
+        }
+    }
+    // recordLocalVars v2 - record local variables
+    void recordLocalVars(Token &_tok, Token &_type_tok)
+    {
+        // determine the token type
+        TypeRecord var_type;
+        if (_type_tok.isTokenDesInt())
+        {
+            var_type = TypeRecord::INT;
+        }
+        else if (_type_tok.isTokenDesFloat())
+        {
+            var_type = TypeRecord::FLOAT;
+        }
+        else
+        {
+            std::cerr << "[Error] parseSetStatement: "
+                      << "unsupported variable type."
+                      << std::endl;
+            exit(0);
+        }
+        cur_expr_type = var_type;
+
+        local_var_type_tracker[_tok.getLiteral()] = var_type;
+    }
+
+    /***************** Section two - strict type checking ******************/
+
+    // We force all the elements inside an EXPRESSION with the
+    // same type.
+    TypeRecord cur_expr_type;
+
+    // strictTypeCheck v1 - check the token has the same type as the
+    // cur_expr_type.
     void strictTypeCheck(Token &_tok)
     {
-        auto check = _tok.getTokenType();
+        TypeRecord tok_type = getTokenType(_tok);
+        assert(tok_type == cur_expr_type && 
+               "[Error] Inconsistent type within expression \
+               or undefined variable");
+    }
+    // strictTypeCheck v2 - check the token has the same type as the specified
+    // function, usually for return statement
+    void strictTypeCheck(Token &_tok, FuncStatement::RetType _type)
+    {
+        TypeRecord tok_type = getTokenType(_tok);
 
+        if (tok_type == TypeRecord::INT && 
+            _type == FuncStatement::RetType::INT) return;
+	
+        if (tok_type == TypeRecord::FLOAT && 
+            _type == FuncStatement::RetType::FLOAT) return;
+
+        assert(false && 
+               "[Error] Inconsistent return type \
+               or undefined variable");
+    }
+
+    TypeRecord getTokenType(Token &_tok)
+    {
+        TypeRecord tok_type;
+        if (_tok.isTokenInt()) tok_type = TypeRecord::INT;
+        else if (_tok.isTokenFloat()) tok_type = TypeRecord::FLOAT;
+        else tok_type = TypeRecord::MAX;
+
+        // If the token is a variable, we need extract its recorded type
         if (auto t_iter = local_var_type_tracker.find(_tok.getLiteral());
                 t_iter != local_var_type_tracker.end())
         {
-            check = t_iter->second;
+            tok_type = t_iter->second;
         }
 
-        assert(check == cur_expr_type && 
-               "[Error] Strict type check failed or undefined variable");
+        // TODO - If the token is function name, we need to extract its
+        // recorded type.
+        
+        return tok_type;
     }
-
-  protected:
-    std::unordered_map<std::string,std::vector<Token::TokenType>>
-        func_tracker;
 
   protected:
     std::unique_ptr<Lexer> lexer;

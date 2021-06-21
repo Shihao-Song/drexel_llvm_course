@@ -1,7 +1,5 @@
 #include "parser/parser.hh"
 
-#include <cassert>
-
 namespace Frontend
 {
 Parser::Parser(const char* fn) : lexer(new Lexer(fn))
@@ -22,7 +20,7 @@ void Parser::parseProgram()
 {
     while (!cur_token.isTokenEOF())
     {
-        FuncStatement::FuncType func_type;
+        FuncStatement::RetType ret_type;
         std::unique_ptr<Identifier> iden;
         std::vector<FuncStatement::Argument> args;
         std::vector<std::shared_ptr<Statement>> codes;
@@ -30,7 +28,7 @@ void Parser::parseProgram()
         if (cur_token.isTokenMain())
         {
             // We assume main() always return null
-            func_type = FuncStatement::FuncType::VOID;
+            ret_type = FuncStatement::RetType::VOID;
 
             iden = std::make_unique<Identifier>(cur_token);
 
@@ -49,18 +47,19 @@ void Parser::parseProgram()
             advanceTokens();
             assert(cur_token.isTokenLT());
 
+            // determine return type
             advanceTokens();
             if (cur_token.isTokenDesVoid())
             {
-                func_type = FuncStatement::FuncType::VOID;
+                ret_type = FuncStatement::RetType::VOID;
             }
             else if (cur_token.isTokenDesInt())
             {
-                func_type = FuncStatement::FuncType::INT;
+                ret_type = FuncStatement::RetType::INT;
             }
 	    else if (cur_token.isTokenDesFloat())
             {
-                func_type = FuncStatement::FuncType::FLOAT;
+                ret_type = FuncStatement::RetType::FLOAT;
             }
             else
             {
@@ -71,64 +70,25 @@ void Parser::parseProgram()
             advanceTokens();
             assert(cur_token.isTokenGT());
 
+            // function name
             advanceTokens();
             iden = std::make_unique<Identifier>(cur_token);
-            if (auto f_iter = func_tracker.find(cur_token.getLiteral());
-                      f_iter == func_tracker.end())
-            {
-                std::vector<Token::TokenType> init;
-                func_tracker.insert({cur_token.getLiteral(), init});
-            }
-            else
-            {
-                std::cerr << "[Error] parseProgram: "
-                          << "duplicated function definition. "
-                          << std::endl;
-
-                exit(0);
-            }
+            // TODO-shihao, record the function information, i.e., return type, argument types
 
             advanceTokens();
             assert(cur_token.isTokenLP());
+
+            // extract arguments
             while (!cur_token.isTokenRP())
             {
-                Token::TokenType type_track;
-
                 advanceTokens();
                 std::string arg_type = cur_token.getLiteral();
-                if (arg_type == "int")
-                {
-                    type_track = Token::TokenType::TOKEN_INT;
-                }
-                else if (arg_type == "float")
-                {
-                    type_track = Token::TokenType::TOKEN_FLOAT;
-                }
-                else
-                {
-                    std::cerr << "[Error] parseProgram: "
-                              << "unsupported variable type."
-                              << std::endl;
-                    exit(0);
-                }
 
                 advanceTokens();
-                if (auto t_iter = local_var_type_tracker.
-                                  find(cur_token.getLiteral());
-                        t_iter != local_var_type_tracker.end())
-                {
-                    std::cout << "[Error] parseProgram: "
-                              << "duplicated variable definition."
-                              << std::endl;
-                    exit(0);
-                }
-                else
-                {
-                    local_var_type_tracker.insert(
-                        {cur_token.getLiteral(), type_track});
-                }
-                args.emplace_back(arg_type, cur_token);
+                FuncStatement::Argument arg(arg_type, cur_token);
+                args.push_back(arg);
 
+                recordLocalVars(arg);
 
                 advanceTokens();
             }
@@ -138,53 +98,30 @@ void Parser::parseProgram()
             assert(cur_token.isTokenLB());
         }
 
+        // parse the codes section
         while (!cur_token.isTokenRB())
         {
             advanceTokens();
             if (cur_token.isTokenSet())
             {
                 auto code = parseSetStatement();
-                // code->printStatement();
                 codes.push_back(std::move(code));
             }
             else if (cur_token.isTokenReturn())
             {
                 advanceTokens();
 
+                strictTypeCheck(cur_token, ret_type);
+
                 std::unique_ptr<RetStatement> ret_statement = 
                     std::make_unique<RetStatement>(cur_token.getLiteral());
-
-                // check return type
-                Token::TokenType check = cur_token.getTokenType();
-                if (auto t_iter = local_var_type_tracker.find(
-                                      cur_token.getLiteral());
-                        t_iter != local_var_type_tracker.end())
-                {
-                    check = t_iter->second;
-                }
-                
-                if (check == Token::TokenType::TOKEN_INT)
-                {
-                    assert(func_type == FuncStatement::FuncType::INT && 
-                           "[parseProgram] Unmatched Return Type\n");
-                }
-                else if (check == Token::TokenType::TOKEN_FLOAT)
-                {
-                    assert(func_type == FuncStatement::FuncType::FLOAT && 
-                           "[parseProgram] Unmatched Return Type\n");
-                }
-                else
-                {
-                    std::cerr << "[parseProgram] Unmatched Return Type\n";
-                    exit(0);
-                }
 
                 codes.push_back(std::move(ret_statement));
             }
         }
 
         std::unique_ptr<Statement> func_proto
-            (new FuncStatement(func_type, 
+            (new FuncStatement(ret_type, 
                                iden, 
                                args, 
                                codes));
@@ -201,22 +138,7 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
     assert(cur_token.isTokenLT());
 
     advanceTokens();
-    Token::TokenType var_type;
-    if (cur_token.isTokenDesInt())
-    {
-        var_type = Token::TokenType::TOKEN_INT;
-    }
-    else if (cur_token.isTokenDesFloat())
-    {
-        var_type = Token::TokenType::TOKEN_FLOAT;
-    }
-    else
-    {
-        std::cerr << "[Error] parseSetStatement: "
-                  << "unsupported variable type."
-                  << std::endl;
-        exit(0);
-    }
+    Token type_token = cur_token;
 
     advanceTokens();
     assert(cur_token.isTokenGT());
@@ -226,18 +148,8 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
     std::unique_ptr<Identifier> iden(new Identifier(cur_token));
 
     // (2) record variable type
-    cur_expr_type = var_type;
-
-    if (auto t_iter = local_var_type_tracker.find(cur_token.getLiteral());
-            t_iter != local_var_type_tracker.end())
-    {
-        t_iter->second = var_type;
-    }
-    else
-    {
-        local_var_type_tracker.insert({cur_token.getLiteral(), var_type});
-    }
-
+    recordLocalVars(cur_token, type_token);
+    
     advanceTokens();
     assert(cur_token.isTokenEqual());
 
@@ -402,15 +314,15 @@ void FuncStatement::printStatement()
     std::cout << "{\n";
     std::cout << "  Function Name: " << iden->print() << "\n";
     std::cout << "  Return Type: ";
-    if (func_type == FuncType::VOID)
+    if (func_type == RetType::VOID)
     {
         std::cout << "void\n";
     }
-    else if (func_type == FuncType::INT)
+    else if (func_type == RetType::INT)
     {
         std::cout << "int\n";
     }
-    else if (func_type == FuncType::FLOAT)
+    else if (func_type == RetType::FLOAT)
     {
         std::cout << "float\n";
     }
