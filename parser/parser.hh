@@ -405,6 +405,9 @@ class Parser
     Token cur_token;
     Token next_token;    
 
+    // TODO-Future work, there may be an expression as the argument
+    // of call expression. So, add(x,y) is supported, but something
+    // like add(x, y + x) is not supported.
     Token peakNextArithOpr()
     {
         auto iter = token_index + 1;
