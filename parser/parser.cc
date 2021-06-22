@@ -325,6 +325,11 @@ std::unique_ptr<Expression> Parser::parseCall()
     {
         if (cur_token.isTokenComma()) advanceTokens();
 
+        assert((cur_token.isTokenIden() 
+                || cur_token.isTokenInt()
+                || cur_token.isTokenFloat())
+                && "only allow identifier or number type token");
+
         args.push_back(cur_token);
         advanceTokens();
     }

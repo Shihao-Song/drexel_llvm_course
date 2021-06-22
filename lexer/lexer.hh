@@ -82,6 +82,8 @@ struct Token
     auto &getLiteral() { return literal; }
     auto &getTokenType() { return type; }
 
+    bool isTokenIden() { return type == TokenType::TOKEN_IDENTIFIER; }
+
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
     bool isTokenMain() { return type == TokenType::TOKEN_MAIN; }
     bool isTokenDef() { return type == TokenType::TOKEN_DEF; }
