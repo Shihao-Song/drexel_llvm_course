@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <queue>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
@@ -138,7 +139,20 @@ class Lexer
 
   protected:
     void parseLine(std::string &line);
+
+    // helper function
+    template<typename T>
+    bool isType(std::string &cur_token_str)
+    {
+        std::istringstream iss(cur_token_str);
+        T float_check;
+        iss >> std::noskipws >> float_check;
+        if (iss.eof() && !iss.fail()) return true;
+        else return false;
+    }
+
 };
+
 }
 
 #endif

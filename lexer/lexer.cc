@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <iostream>
-#include <sstream>
 
 namespace Frontend
 {
@@ -182,38 +181,19 @@ void Lexer::parseLine(std::string &line)
             iter++;
         }
 
-        // is the token int?
-	{
-            std::istringstream iss(cur_token_str);	
-	    int int_check;
-            iss >> std::noskipws >> int_check;
-            if (iss.eof() && !iss.fail())
-            {
-                std::string literal = cur_token_str;
-                Token::TokenType type = Token::TokenType::TOKEN_INT;
-                Token _tok(type, literal);
-                // std::cout << _tok.prinTokenType() << " | "
-                //           << _tok.getVal() << "\n";
-                toks_per_line.push(_tok);
-                continue;
-            }
-        }
-
-        // is the token float?
+        if (isType<int>(cur_token_str))
         {
-            std::istringstream iss(cur_token_str);	
-	    float float_check;
-            iss >> std::noskipws >> float_check;
-            if (iss.eof() && !iss.fail())
-            {
-                std::string literal = cur_token_str;
-                Token::TokenType type = Token::TokenType::TOKEN_FLOAT;
-                Token _tok(type, literal);
-                // std::cout << _tok.prinTokenType() << " | "
-                //           << _tok.getVal() << "\n";
-                toks_per_line.push(_tok);
-                continue;
-            }
+            Token::TokenType type = Token::TokenType::TOKEN_INT;
+            Token _tok(type, cur_token_str);
+            toks_per_line.push(_tok);
+            continue;
+        }
+        else if (isType<float>(cur_token_str))
+        {
+            Token::TokenType type = Token::TokenType::TOKEN_FLOAT;
+            Token _tok(type, cur_token_str);
+            toks_per_line.push(_tok);
+            continue;
         }
 
         // is the token keywork?
