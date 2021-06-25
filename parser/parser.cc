@@ -40,8 +40,8 @@ void Parser::parseProgram()
 
         if (cur_token.isTokenMain())
         {
-            // We assume main() always return null
-            ret_type = FuncStatement::RetType::VOID;
+            // We assume main() always return int
+            ret_type = FuncStatement::RetType::INT;
 
             iden = std::make_unique<Identifier>(cur_token);
 

@@ -9,7 +9,7 @@
 #include <variant>
 
 // LLVM IR codegen libraries
-// TODO - shihao, I think we should have a separate codegen class
+// Do not change these lines before codegen project
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -391,12 +391,6 @@ class Program
 /* Parser definition */
 class Parser
 {
-  // TODO, should we put here?
-  protected:
-    static std::unique_ptr<LLVMContext> TheContext;
-    static std::unique_ptr<Module> TheModule;
-    static std::unique_ptr<IRBuilder<>> Builder;
-
   protected:
     Program program;
 
@@ -406,8 +400,10 @@ class Parser
     Token next_token;    
 
     // TODO-Future work, there may be an expression as the argument
-    // of call expression. So, add(x,y) is supported, but something
-    // like add(x, y + x) is not supported.
+    // to call expression. So, add(x,y) is supported, but something
+    // like add(x, y + x) is not supported. However, given the 
+    // nature of strict type checking of our language, this feature
+    // may not be that important.
     Token peakNextArithOpr()
     {
         auto iter = token_index + 1;
@@ -605,6 +601,11 @@ class Parser
     }
 
   protected:
+    // We pre-loaded all the tokens, which should not be considered
+    // as the most optimal solution. But this can allow us to 
+    // easily implement peak() functionality. This should be
+    // re-designed when we are scaling the compiler for bigger
+    // codebase.
     std::vector<Token> tokens;
     std::unique_ptr<Lexer> lexer;
 
@@ -623,6 +624,16 @@ class Parser
     std::unique_ptr<Expression> parseTerm();
     std::unique_ptr<Expression> parseFactor();
     std::unique_ptr<Expression> parseCall();
+
+  // For code generation project.
+  // Do not modify these lines before code generation project
+  protected:
+    std::unique_ptr<LLVMContext> context;
+    std::unique_ptr<Module> module;
+    std::unique_ptr<IRBuilder<>> builder;
+
+  public:
+    void codegen(const char* fn);
 };
 }
 
