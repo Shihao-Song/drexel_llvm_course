@@ -1,11 +1,11 @@
-#include "parser/parser.hh"
+#include "codegen/codegen.hh"
 
 namespace Frontend
 {
-void Parser::codegen(const char* fn)
+void Codegen::gen()
 {
     context = std::make_unique<LLVMContext>();
-    module = std::make_unique<Module>(fn, *context);
+    module = std::make_unique<Module>(mod_name, *context);
 
     // Create a new builder for the module.
     builder = std::make_unique<IRBuilder<>>(*context);

@@ -8,22 +8,6 @@
 #include <memory>
 #include <variant>
 
-// LLVM IR codegen libraries
-// Do not change these lines before codegen project
-#include "llvm/ADT/APFloat.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Verifier.h"
-
-using namespace llvm;
-
 namespace Frontend
 {
 /* Identifier definition */
@@ -624,16 +608,6 @@ class Parser
     std::unique_ptr<Expression> parseTerm();
     std::unique_ptr<Expression> parseFactor();
     std::unique_ptr<Expression> parseCall();
-
-  // For code generation project.
-  // Do not modify these lines before code generation project
-  protected:
-    std::unique_ptr<LLVMContext> context;
-    std::unique_ptr<Module> module;
-    std::unique_ptr<IRBuilder<>> builder;
-
-  public:
-    void codegen(const char* fn);
 };
 }
 

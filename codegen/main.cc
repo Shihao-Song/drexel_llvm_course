@@ -1,5 +1,5 @@
-#include "lexer/lexer.hh"
 #include "parser/parser.hh"
+#include "codegen/codegen.hh"
 
 #include <iomanip>
 #include <iostream>
@@ -10,5 +10,9 @@ int main(int argc, char* argv[])
 {
     // Parser
     Parser parser(argv[1]);
-    parser.codegen(argv[1]);
+
+    // LLVM IR generation
+    Codegen codegen(argv[1], argv[2]);
+    codegen.setParser(&parser);
+    codegen.gen();
 }

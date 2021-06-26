@@ -5,14 +5,12 @@ SOURCE 	+= $(ROOT)/parser/parser.cc
 CC	:= clang++
 FLAGS	:= -g -O3 -std=c++17 -w 
 FLAGS	+= -I $(ROOT)
-FLAGS	+= `llvm-config --cxxflags`
 TARGET	:= parser
-LD	:= `llvm-config --ldflags --system-libs --libs core`
 
 all: $(TARGET)
 
 $(TARGET): $(SOURCE)
-	$(CC) $(FLAGS) $(SOURCE) -o $(TARGET) $(LD)
+	$(CC) $(FLAGS) $(SOURCE) -o $(TARGET)
 
 clean:
 	rm -f $(TARGET)
