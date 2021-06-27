@@ -8,6 +8,9 @@ main()
 {
     set<int> x = 5;
     set<int> y = 10;
+    printVarInt(y);
+    set<float> k = 12.5;
+    printVarFloat(k);
     set<int> result = add(x, y);
     set<int> z = 7 + 3 * (10 / (12 / add(3, 1) - 1));
     set<int> z = add(5, 3) * 12  + add(3, 4) * (10 + 5);

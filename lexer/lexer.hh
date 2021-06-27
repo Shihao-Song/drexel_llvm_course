@@ -52,6 +52,10 @@ struct Token
         TOKEN_DES_VOID,
         TOKEN_DES_INT,
         TOKEN_DES_FLOAT,
+
+        // Built-in functions
+        TOKEN_PRINT_VAR_INT,
+        TOKEN_PRINT_VAR_FLOAT
     } type = TokenType::TOKEN_ILLEGAL;
 
     std::string literal = "";
@@ -116,6 +120,15 @@ struct Token
 
     bool isTokenLT() { return type == TokenType::TOKEN_LT; }
     bool isTokenGT() { return type == TokenType::TOKEN_GT; }
+
+    bool isTokenPrintVarInt()
+    {
+        return type == TokenType::TOKEN_PRINT_VAR_INT;
+    }
+    bool isTokenPrintVarFloat()
+    {
+        return type == TokenType::TOKEN_PRINT_VAR_FLOAT;
+    }
 };
 
 class Lexer

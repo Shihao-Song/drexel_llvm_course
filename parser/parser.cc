@@ -15,6 +15,24 @@ Parser::Parser(const char* fn) : lexer(new Lexer(fn))
     cur_token = tokens[token_index];
     next_token = tokens[token_index + 1];
 
+    // Fill the pre-built 
+    std::vector<TypeRecord> arg_types;
+    TypeRecord ret_type = TypeRecord::VOID;
+    FuncRecord record;
+
+    // printVarInt
+    arg_types.push_back(TypeRecord::INT);
+    record.ret_type = ret_type;
+    record.arg_types = arg_types;
+    func_def_tracker.insert({"printVarInt", record});
+
+    // printVarFloat
+    arg_types.clear();
+    arg_types.push_back(TypeRecord::FLOAT);
+    record.ret_type = ret_type;
+    record.arg_types = arg_types;
+    func_def_tracker.insert({"printVarFloat", record});
+
     parseProgram();
 }
 
@@ -122,6 +140,15 @@ void Parser::parseProgram()
                 auto code = parseSetStatement();
                 // code->printStatement();
                 codes.push_back(std::move(code));
+            }
+            else if (cur_token.isTokenPrintVarInt() || 
+                     cur_token.isTokenPrintVarFloat())
+            {
+                auto code = parseCall();
+                std::unique_ptr<BuiltinCallStatement> built_in = 
+                    std::make_unique<BuiltinCallStatement>(code);
+                // built_in->printStatement();
+                codes.push_back(std::move(built_in));
             }
             else if (cur_token.isTokenReturn())
             {

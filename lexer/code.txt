@@ -10,4 +10,5 @@ main()
     set<int> y = 10;
     set<float> z = 4.5 + 7.9;
     set<int> result = add(x, y);
+    printVarInt(z);
 }

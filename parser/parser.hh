@@ -207,6 +207,7 @@ class Statement
         SET_STATEMENT,
         FUNC_STATEMENT,
         RET_STATEMENT,
+        BUILT_IN_CALL_STATEMENT,
         ILLEGAL
     };
 
@@ -221,6 +222,35 @@ class Statement
     bool isStatementFunc() { return type == StatementType::FUNC_STATEMENT; }
     bool isStatementSet() { return type == StatementType::SET_STATEMENT; }
     bool isStatementRet() { return type == StatementType::RET_STATEMENT; }
+};
+
+class BuiltinCallStatement : public Statement
+{
+  protected:
+    std::shared_ptr<Expression> expr;
+
+  public:
+    BuiltinCallStatement(std::unique_ptr<Expression> &_expr)
+    {
+        type = StatementType::BUILT_IN_CALL_STATEMENT;
+
+        expr = std::move(_expr);
+    }
+    
+    BuiltinCallStatement(const BuiltinCallStatement &_statement)
+    {
+        type = StatementType::BUILT_IN_CALL_STATEMENT;
+
+        expr = std::move(_statement.expr);
+    }
+    
+    void printStatement() override
+    {
+        std::cout << "    {\n";
+        std::cout << "      Built-in call\n";
+        std::cout << "      " << expr->print(4);
+        std::cout << "    }\n";
+    }
 };
 
 class RetStatement : public Statement
@@ -420,7 +450,7 @@ class Parser
     /************* Section one - record local variable types ***************/
     enum class TypeRecord : int
     {
-        INT, FLOAT, MAX
+        VOID, INT, FLOAT, MAX
     };
 
     // Track each local variable's type
