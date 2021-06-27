@@ -15,4 +15,5 @@ int main(int argc, char* argv[])
     Codegen codegen(argv[1], argv[2]);
     codegen.setParser(&parser);
     codegen.gen();
+    codegen.print();
 }

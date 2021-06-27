@@ -9,6 +9,7 @@ FLAGS	+= -I $(ROOT)
 FLAGS	+= `llvm-config --cxxflags`
 TARGET	:= codegen
 LD	:= `llvm-config --ldflags --system-libs --libs core`
+LD	+= `llvm-config --libs bitwriter`
 
 all: $(TARGET)
 

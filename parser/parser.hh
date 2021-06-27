@@ -217,6 +217,10 @@ class Statement
     Statement() {}
 
     virtual void printStatement() {}
+
+    bool isStatementFunc() { return type == StatementType::FUNC_STATEMENT; }
+    bool isStatementSet() { return type == StatementType::SET_STATEMENT; }
+    bool isStatementRet() { return type == StatementType::RET_STATEMENT; }
 };
 
 class RetStatement : public Statement
@@ -348,7 +352,15 @@ class FuncStatement : public Statement
         args = _statement.args;
         codes = std::move(_statement.codes);
     }
-    
+   
+    bool isRetTypeVoid() { return func_type == RetType::VOID; }
+    bool isRetTypeInt() { return func_type == RetType::INT; }
+    bool isRetTypeFloat() { return func_type == RetType::FLOAT; }
+
+    auto &getFuncName() { return iden->getLiteral(); }
+    auto &getFuncArgs() { return args; }
+    auto &getFuncCodes() { return codes; }
+
     void printStatement() override;
 };
 
@@ -370,6 +382,8 @@ class Program
     {
         for (auto &statement : statements) { statement->printStatement(); }
     }
+
+    auto& getStatements() { return statements; }
 };
 
 /* Parser definition */
@@ -597,6 +611,8 @@ class Parser
     Parser(const char* fn); 
 
     void printStatements() { program.printStatements(); }
+
+    auto &getProgram() { return program; }
 
   protected:
     void parseProgram();
