@@ -81,7 +81,16 @@ void Codegen::funcGen(Statement *_statement)
     BasicBlock *BB = BasicBlock::Create(*context, "", ir_gen_func);
     builder->SetInsertPoint(BB);
 
+    FunctionCallee CalleeF = 
+        module->getOrInsertFunction("printVarInt",
+        Type::getInt32Ty(*context), 
+        Type::getInt32Ty(*context));
+
     Value *ret_val = ConstantInt::get(*context, APInt(32, 5));
+
+    std::vector<Value *>print_vals;
+    print_vals.push_back(ret_val);
+    builder->CreateCall(CalleeF, print_vals);
 
     builder->CreateRet(ret_val);
     // Verify function
