@@ -16,10 +16,8 @@ void Codegen::gen()
 
     for (auto &statement : statements)
     {
-        if (statement->isStatementFunc())
-        {
-            funcGen(statement.get());
-        }
+        assert(statement->isStatementFunc());
+        funcGen(statement.get());
     }
 }
 
@@ -31,6 +29,8 @@ void Codegen::funcGen(Statement *_statement)
     auto& func_name = func_statement->getFuncName();
     auto& func_args = func_statement->getFuncArgs();
     auto& func_codes = func_statement->getFuncCodes();
+
+    if (func_name != "main") return;
 
     // IR Gen
     // Prepare argument types
@@ -64,6 +64,7 @@ void Codegen::funcGen(Statement *_statement)
 
     // Determine linkage type.
     // TODO-Shihao, understand different types
+    // So far, let's keep ExternalLinkage for all functions
     GlobalValue::LinkageTypes link_type = Function::ExternalLinkage;
 
     // Create function declaration
@@ -72,29 +73,46 @@ void Codegen::funcGen(Statement *_statement)
                                              func_name, 
                                              module.get());
    
-    // Set names for all arguments.
-    unsigned idx = 0;
-    for (auto &arg : ir_gen_func->args())
-        arg.setName(func_args[idx++].getLiteral());
+    // TODO, track all the arguments.
 
     // Create a new basic block to start insertion into.
     BasicBlock *BB = BasicBlock::Create(*context, "", ir_gen_func);
     builder->SetInsertPoint(BB);
 
-    FunctionCallee CalleeF = 
-        module->getOrInsertFunction("printVarInt",
-        Type::getInt32Ty(*context), 
-        Type::getInt32Ty(*context));
+    // Generate the code section
+    for (auto &statement : func_codes)
+    {
+        if (statement->isStatementSet())
+        {
+            setGen(statement.get());
+        }
+    }
 
-    Value *ret_val = ConstantInt::get(*context, APInt(32, 5));
-
-    std::vector<Value *>print_vals;
-    print_vals.push_back(ret_val);
-    builder->CreateCall(CalleeF, print_vals);
-
+    // TODO-tmp ret
+    Value *ret_val = ConstantInt::get(*context, APInt(32, 0));
     builder->CreateRet(ret_val);
+
     // Verify function
     verifyFunction(*ir_gen_func);
+}
+
+void Codegen::setGen(Statement *_statement)
+{
+}
+
+void Codegen::builtinGen(Statement *_statement)
+{
+    static FunctionCallee printVarInt = 
+        module->getOrInsertFunction("printVarInt",
+            Type::getVoidTy(*context), 
+            Type::getInt32Ty(*context));
+
+    static FunctionCallee printVarFloat = 
+        module->getOrInsertFunction("printVarFloat",
+            Type::getVoidTy(*context), 
+            Type::getFloatTy(*context));
+    
+    // builder->CreateCall(CalleeF, print_vals);
 }
 
 void Codegen::print()
@@ -104,5 +122,4 @@ void Codegen::print()
     raw_fd_ostream out(out_fn, EC);
     WriteBitcodeToFile(*module, out);
 }
-
 }

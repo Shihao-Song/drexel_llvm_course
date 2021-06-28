@@ -9,6 +9,6 @@ int add(int x, int y)
 int main()
 {
     int x = 10;
-    int y = 20;
-    int z = x + y;
+    // int y = 20;
+    // int z = x + y;
 }

@@ -1,6 +1,14 @@
+def<int> add(int x, int y)
+{
+    set<int> z = x + y;
+    return z;
+}
+
 main()
 {
     set<int> x = 10;
+    printVarInt(x);
     set<int> y = 20;
     set<int> z = x + y;
+    return 0;
 }

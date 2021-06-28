@@ -17,4 +17,4 @@ $(TARGET): $(SOURCE)
 	$(CC) $(FLAGS) $(SOURCE) -o $(TARGET) $(LD)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) *bc

@@ -1,7 +1,7 @@
-def<int> add(int x, int y)
+def<int> add(int a, int b)
 {
-    set<int> z = x + y;
-    return z;
+    set<int> c = a + b;
+    return c;
 }
 
 main()

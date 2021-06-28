@@ -222,6 +222,10 @@ class Statement
     bool isStatementFunc() { return type == StatementType::FUNC_STATEMENT; }
     bool isStatementSet() { return type == StatementType::SET_STATEMENT; }
     bool isStatementRet() { return type == StatementType::RET_STATEMENT; }
+    bool isStatementBuiltin() 
+    {
+        return type == StatementType::BUILT_IN_CALL_STATEMENT; 
+    }
 };
 
 class BuiltinCallStatement : public Statement
@@ -654,6 +658,59 @@ class Parser
     std::unique_ptr<Expression> parseTerm();
     std::unique_ptr<Expression> parseFactor();
     std::unique_ptr<Expression> parseCall();
+
+  protected:
+    struct PerFuncRecord
+    {
+        PerFuncRecord() {}
+
+        PerFuncRecord(std::unordered_map<std::string,TypeRecord> &_map)
+        {
+            var_to_type = _map;
+        }
+
+        void print()
+        {
+            for (auto &[var, type] : var_to_type)
+            {
+                std::cout << "  " << var << "\n";;
+            }
+        }
+
+        TypeRecord getVarType(std::string &var_name)
+        {
+            auto iter = var_to_type.find(var_name);
+            assert(iter != var_to_type.end());
+            return iter->second;
+        }
+
+        std::unordered_map<std::string,TypeRecord> var_to_type;
+    };
+
+    std::unordered_map<std::string,PerFuncRecord> per_func_var_tracking;
+
+    TypeRecord getInFuncVarType(std::string &func_name, 
+                                std::string &var_name)
+    {
+        auto iter = per_func_var_tracking.find(func_name);
+        assert(iter != per_func_var_tracking.end());
+
+        return iter->second.getVarType(var_name);
+    }
+
+  public:
+    bool isInFuncVarInt(std::string &func_name, std::string &var_name)
+    {
+        return getInFuncVarType(func_name, var_name) 
+                   == TypeRecord::INT;
+    }
+    
+    bool isInFuncVarFloat(std::string &func_name, std::string &var_name)
+    {
+         return getInFuncVarType(func_name, var_name) 
+                   == TypeRecord::FLOAT;
+    }
+
 };
 }
 

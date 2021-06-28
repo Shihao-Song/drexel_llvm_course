@@ -130,6 +130,10 @@ void Parser::parseProgram()
             // record function def
             recordDefs(iden->getLiteral(), ret_type, args);
         }
+        else
+        {
+            assert(false && "Don't support global var yet");
+        }
 
         // parse the codes section
         while (!cur_token.isTokenRB())
@@ -164,14 +168,17 @@ void Parser::parseProgram()
             }
         }
 
+        per_func_var_tracking.insert({iden->getLiteral(),
+                                      PerFuncRecord(local_var_type_tracker)});
+        local_var_type_tracker.clear();
+
         std::unique_ptr<Statement> func_proto
             (new FuncStatement(ret_type, 
                                iden, 
                                args, 
                                codes));
-
         program.addStatement(func_proto);
-
+        
         advanceTokens();
     }
 }
