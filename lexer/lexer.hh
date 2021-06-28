@@ -164,7 +164,7 @@ class Lexer
         else return false;
     }
 
-    bool isArithOpr(char c);
+    // bool isArithOpr(char c);
 };
 
 }

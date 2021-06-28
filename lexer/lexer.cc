@@ -155,7 +155,7 @@ bool Lexer::getToken(Token &tok)
 
 void Lexer::parseLine(std::string &line)
 {
-    bool prev_token_arith = false;
+    // bool prev_token_arith = false;
     // Extract all the tokens from the current line
     for (auto iter = line.begin(); iter != line.end(); iter++)
     {
@@ -169,9 +169,9 @@ void Lexer::parseLine(std::string &line)
         if (auto sep_iter = seps.find(*iter); 
             sep_iter != seps.end())
         {
-            // Need to take care of negative sign
-            if (*iter != '-' || !prev_token_arith)
-            {
+            // TODO - Need to take care of negative sign
+            // if (*iter != '-' || !prev_token_arith)
+            // {
                 std::string literal = cur_token_str;
                 Token::TokenType type = sep_iter->second;
                 Token _tok(type, literal);
@@ -179,15 +179,15 @@ void Lexer::parseLine(std::string &line)
                 //           << _tok.getVal() << "\n";
                 toks_per_line.push(_tok);
                 
-                if (isArithOpr(*iter))
-                    prev_token_arith = true;
-                else
-                    prev_token_arith = false;
+                // if (isArithOpr(*iter))
+                //     prev_token_arith = true;
+                // else
+                //     prev_token_arith = false;
                 continue;
-            }
+            // }
         }
 
-        prev_token_arith = false;
+        // prev_token_arith = false;
         // (3) parse the token
         auto next = iter + 1;
         while (next != line.end())
@@ -241,8 +241,14 @@ void Lexer::parseLine(std::string &line)
     }
 }
 
+/*
+// I can't think of any good names for this one
+// This function simply helps us to identif
 bool Lexer::isArithOpr(char c)
 {
-    return (c == '+' || c == '-' || c == '*' || c == '/' || c == '=');
+    return (c == '+' || c == '-' || c == '*' || c == '/' || 
+            c == '=' || c == ','); // The last two helps to 
+    // identify x = -10 or add(1, -10)
 }
+*/
 }
