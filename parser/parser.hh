@@ -59,6 +59,9 @@ class Expression
 
     virtual std::string getLiteral() { return "[Error] No implementation"; }
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
+
+    bool isExprLiteral() { return type == ExpressionType::LITERAL; }
+    bool isExprCall() { return type == ExpressionType::CALL; }
 };
 
 class CallExpression : public Expression
@@ -90,6 +93,15 @@ class CallExpression : public Expression
         for (auto &arg : args) ret += (arg.getLiteral() + " ");
 
 	ret += "\n";
+        return ret;
+    }
+
+    auto &getCallFunc() { return def.getLiteral(); }
+    auto getArgNames()
+    { 
+        std::vector<std::string> ret;
+        for (auto &arg : args)
+            ret.push_back(arg.getLiteral());
         return ret;
     }
 };
@@ -255,6 +267,13 @@ class BuiltinCallStatement : public Statement
         std::cout << "      " << expr->print(4);
         std::cout << "    }\n";
     }
+
+    CallExpression* getCallExpr()
+    {
+        CallExpression *call = 
+            static_cast<CallExpression*>(expr.get());
+        return call;
+    }
 };
 
 class RetStatement : public Statement
@@ -300,6 +319,9 @@ class SetStatement : public Statement
         expr = std::move(_statement.expr);
         type = _statement.type;
     }
+
+    auto &getIden() { return iden->getLiteral(); }
+    auto &getExpr() { return expr; }
 
     void printStatement() override;
 };

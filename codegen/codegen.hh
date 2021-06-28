@@ -51,12 +51,11 @@ class Codegen
     void print();
 
   protected:
-    // TODO-Shihao, local variable tracker
-    // std::vector<>
+    std::unordered_map<std::string, Value *> local_var_tracking;
 
-    void funcGen(Statement *_statement);
-    void setGen(Statement *_statement);
-    void builtinGen(Statement *_statement);
+    void funcGen(Statement *);
+    void setGen(std::string &,Statement *);
+    void builtinGen(Statement *);
 };
 }
 

@@ -8,7 +8,7 @@ main()
 {
     set<int> x = 10;
     printVarInt(x);
-    set<int> y = 20;
-    set<int> z = x + y;
+    set<float> y = 20.0;
+    printVarFloat(y);
     return 0;
 }

@@ -18,6 +18,7 @@ void Codegen::gen()
     {
         assert(statement->isStatementFunc());
         funcGen(statement.get());
+        local_var_tracking.clear();
     }
 }
 
@@ -84,7 +85,11 @@ void Codegen::funcGen(Statement *_statement)
     {
         if (statement->isStatementSet())
         {
-            setGen(statement.get());
+            setGen(func_name, statement.get());
+        }
+        else if (statement->isStatementBuiltin())
+        {
+            builtinGen(statement.get());
         }
     }
 
@@ -96,8 +101,36 @@ void Codegen::funcGen(Statement *_statement)
     verifyFunction(*ir_gen_func);
 }
 
-void Codegen::setGen(Statement *_statement)
+void Codegen::setGen(std::string &cur_func_name,
+                     Statement *_statement)
 {
+    SetStatement* set_statement = 
+        static_cast<SetStatement*>(_statement);
+
+    auto &iden = set_statement->getIden();
+    auto &expr = set_statement->getExpr();
+
+    if (expr->isExprLiteral())
+    {
+        auto val_str = expr->getLiteral();
+
+        if (parser->isInFuncVarInt(cur_func_name, iden))
+	{
+            Value *reg = builder->CreateAlloca(Type::getInt32Ty(*context));
+            Value *val = ConstantInt::get(*context, APInt(32, stoi(val_str)));
+            builder->CreateStore(val, reg);
+            local_var_tracking[iden] = reg;
+        }
+	else if (parser->isInFuncVarFloat(cur_func_name, iden))
+	{
+            Value *reg = builder->CreateAlloca(Type::getFloatTy(*context));
+            Value *val = ConstantFP::get(*context, APFloat(stof(val_str)));
+            builder->CreateStore(val, reg);
+            local_var_tracking[iden] = reg;
+        }
+    }
+
+    auto type = parser->isInFuncVarInt(cur_func_name, iden);
 }
 
 void Codegen::builtinGen(Statement *_statement)
@@ -111,8 +144,31 @@ void Codegen::builtinGen(Statement *_statement)
         module->getOrInsertFunction("printVarFloat",
             Type::getVoidTy(*context), 
             Type::getFloatTy(*context));
-    
-    // builder->CreateCall(CalleeF, print_vals);
+   
+    BuiltinCallStatement *built_in_statement = 
+        static_cast<BuiltinCallStatement*>(_statement);
+
+    auto call_expr = built_in_statement->getCallExpr();
+
+    auto &func_name = call_expr->getCallFunc();
+    auto args = call_expr->getArgNames();
+    assert(args.size() == 1);
+
+    auto iter = local_var_tracking.find(args[0]);
+    assert(iter != local_var_tracking.end());
+
+    if (func_name == "printVarInt")
+    {
+        Value *val = builder->CreateLoad(Type::getInt32Ty(*context),
+                                         iter->second);
+        builder->CreateCall(printVarInt, val);
+    }
+    else if (func_name == "printVarFloat")
+    {
+        Value *val = builder->CreateLoad(Type::getFloatTy(*context),
+                                         iter->second);
+        builder->CreateCall(printVarFloat, val);
+    }
 }
 
 void Codegen::print()
