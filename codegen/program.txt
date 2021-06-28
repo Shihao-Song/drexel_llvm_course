@@ -7,10 +7,8 @@ def<int> add(int x, int y)
 main()
 {
     set<int> x = 10;
-    set<int> y = 20;
+    set<int> y = -20;
     set<int> z = x + y;
-    printVarInt(z);
-    set<int> z = x - y;
     printVarInt(z);
 
     return 0;
