@@ -8,6 +8,9 @@ int add(int x, int y)
 
 int main()
 {
+    int k = 4 + 5;
+
     int x = 10;
-    float y = 20.0;
+    int y = 20;
+    int z = x + y;
 }

@@ -155,6 +155,7 @@ bool Lexer::getToken(Token &tok)
 
 void Lexer::parseLine(std::string &line)
 {
+    bool prev_token_arith = false;
     // Extract all the tokens from the current line
     for (auto iter = line.begin(); iter != line.end(); iter++)
     {
@@ -168,20 +169,31 @@ void Lexer::parseLine(std::string &line)
         if (auto sep_iter = seps.find(*iter); 
             sep_iter != seps.end())
         {
-            std::string literal = cur_token_str;
-            Token::TokenType type = sep_iter->second;
-            Token _tok(type, literal);
-            // std::cout << _tok.prinTokenType() << " | "
-            //           << _tok.getVal() << "\n";
-            toks_per_line.push(_tok);
-            continue;
+            // Need to take care of negative sign
+            if (*iter != '-' || !prev_token_arith)
+            {
+                std::string literal = cur_token_str;
+                Token::TokenType type = sep_iter->second;
+                Token _tok(type, literal);
+                // std::cout << _tok.prinTokenType() << " | "
+                //           << _tok.getVal() << "\n";
+                toks_per_line.push(_tok);
+                
+                if (isArithOpr(*iter))
+                    prev_token_arith = true;
+                else
+                    prev_token_arith = false;
+                continue;
+            }
         }
 
+        prev_token_arith = false;
         // (3) parse the token
         auto next = iter + 1;
         while (next != line.end())
         {
             auto next_sep_check = seps.find(*next);
+
             if ((*next == ' ') || (next_sep_check != seps.end()))
             {
                 break;
@@ -227,5 +239,10 @@ void Lexer::parseLine(std::string &line)
             toks_per_line.push(_tok);
         }
     }
+}
+
+bool Lexer::isArithOpr(char c)
+{
+    return (c == '+' || c == '-' || c == '*' || c == '/' || c == '=');
 }
 }

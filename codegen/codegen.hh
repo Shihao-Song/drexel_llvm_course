@@ -56,6 +56,9 @@ class Codegen
     void funcGen(Statement *);
     void setGen(std::string &,Statement *);
     void builtinGen(Statement *);
+
+    Value* arithExprGen(std::string&, std::string&, ArithExpression*);
+    Value* literalExprGen(std::string&, std::string&, LiteralExpression*);
 };
 }
 

@@ -6,9 +6,12 @@ def<int> add(int x, int y)
 
 main()
 {
-    set<int> x = 10;
-    printVarInt(x);
-    set<float> y = 20.0;
-    printVarFloat(y);
+    set<int> x = -80;
+    set<int> y = 40 - x;
+    set<int> z = x + y + -40;
+    printVarInt(z);
+    set<int> z = z - y - -80;
+    printVarInt(z);
+  
     return 0;
 }

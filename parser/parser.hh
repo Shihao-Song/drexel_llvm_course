@@ -57,11 +57,17 @@ class Expression
 
     auto getType() { return type; }
 
-    virtual std::string getLiteral() { return "[Error] No implementation"; }
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
 
     bool isExprLiteral() { return type == ExpressionType::LITERAL; }
     bool isExprCall() { return type == ExpressionType::CALL; }
+    bool isExprArith()
+    {
+        return (type == ExpressionType::PLUS || 
+                type == ExpressionType::MINUS ||
+                type == ExpressionType::ASTERISK ||
+                type == ExpressionType::SLASH);
+    }
 };
 
 class CallExpression : public Expression
@@ -123,7 +129,10 @@ class LiteralExpression : public Expression
         type = ExpressionType::LITERAL;
     }
 
-    std::string getLiteral() { return tok.getLiteral(); }
+    std::string& getLiteral() { return tok.getLiteral(); }
+
+    bool isLiteralInt() { return tok.isTokenInt(); }
+    bool isLiteralFloat() { return tok.isTokenFloat(); }
 
     // Debug print associated with the print in ArithExp
     std::string print(unsigned level) override
@@ -157,6 +166,26 @@ class ArithExpression : public Expression
         left = std::move(_expr.left);
         right = std::move(_expr.right);
         type = _expr.type;
+    }
+
+    auto getLeft() { return left.get(); }
+    auto getRight() { return right.get(); }
+
+    char getOperator()
+    {
+        switch(type)
+        {
+            case ExpressionType::PLUS:
+                return '+';
+            case ExpressionType::MINUS:
+                return '-';
+            case ExpressionType::ASTERISK:
+                return '*';
+            case ExpressionType::SLASH:
+                return '/';
+            default:
+                assert(false && "unsupported operator");
+        }
     }
 
     // Debug print
@@ -321,7 +350,7 @@ class SetStatement : public Statement
     }
 
     auto &getIden() { return iden->getLiteral(); }
-    auto &getExpr() { return expr; }
+    auto getExpr() { return expr.get(); }
 
     void printStatement() override;
 };
@@ -529,7 +558,15 @@ class Parser
         }
         cur_expr_type = var_type;
 
-        local_var_type_tracker[_tok.getLiteral()] = var_type;
+	if (auto iter = local_var_type_tracker.find(_tok.getLiteral());
+                iter != local_var_type_tracker.end())
+        {
+            assert(var_type == iter->second);
+        }
+        else
+        {
+            local_var_type_tracker[_tok.getLiteral()] = var_type;
+        }
     }
 
     /************* Section two - record function informatoin ****************/

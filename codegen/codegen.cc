@@ -108,31 +108,44 @@ void Codegen::setGen(std::string &cur_func_name,
         static_cast<SetStatement*>(_statement);
 
     auto &iden = set_statement->getIden();
-    auto &expr = set_statement->getExpr();
+    auto expr = set_statement->getExpr();
+
+    // Allocate for identifier
+    Value *reg;
+    if (auto iter = local_var_tracking.find(iden);
+            iter == local_var_tracking.end())
+    {
+        if (parser->isInFuncVarInt(cur_func_name, iden))
+            reg = builder->CreateAlloca(Type::getInt32Ty(*context));
+        else if (parser->isInFuncVarFloat(cur_func_name, iden))
+            reg = builder->CreateAlloca(Type::getFloatTy(*context));
+    }
+    else
+    {
+        reg = iter->second;
+    }
+
+    Value *val;
 
     if (expr->isExprLiteral())
     {
-        auto val_str = expr->getLiteral();
+        LiteralExpression* lit = static_cast<LiteralExpression*>(expr);
 
-        if (parser->isInFuncVarInt(cur_func_name, iden))
-	{
-            Value *reg = builder->CreateAlloca(Type::getInt32Ty(*context));
-            Value *val = ConstantInt::get(*context, APInt(32, stoi(val_str)));
-            builder->CreateStore(val, reg);
-            local_var_tracking[iden] = reg;
-        }
-	else if (parser->isInFuncVarFloat(cur_func_name, iden))
-	{
-            Value *reg = builder->CreateAlloca(Type::getFloatTy(*context));
-            Value *val = ConstantFP::get(*context, APFloat(stof(val_str)));
-            builder->CreateStore(val, reg);
-            local_var_tracking[iden] = reg;
-        }
+        val = literalExprGen(cur_func_name, iden, lit);
     }
+    else if (expr->isExprArith())
+    {
+        ArithExpression *arith = static_cast<ArithExpression *>(expr);
 
-    auto type = parser->isInFuncVarInt(cur_func_name, iden);
+        val = arithExprGen(cur_func_name, iden, arith);        
+    }
+    
+    builder->CreateStore(val, reg);
+    local_var_tracking[iden] = reg;
 }
 
+// built-ins are implemented in util/
+// please check bc_compile_and_run.bash and util for more info
 void Codegen::builtinGen(Statement *_statement)
 {
     static FunctionCallee printVarInt = 
@@ -149,6 +162,7 @@ void Codegen::builtinGen(Statement *_statement)
         static_cast<BuiltinCallStatement*>(_statement);
 
     auto call_expr = built_in_statement->getCallExpr();
+    assert(call_expr->isExprCall());
 
     auto &func_name = call_expr->getCallFunc();
     auto args = call_expr->getArgNames();
@@ -169,6 +183,147 @@ void Codegen::builtinGen(Statement *_statement)
                                          iter->second);
         builder->CreateCall(printVarFloat, val);
     }
+}
+
+Value* Codegen::arithExprGen(std::string& cur_func_name, 
+                             std::string& iden, 
+                             ArithExpression* arith)
+{
+    Value *val_left = nullptr;
+    Value *val_right = nullptr;
+
+    // Recursively generate the left arith expr
+    if (arith->getLeft() != nullptr)
+    {
+        Expression *next_expr = arith->getLeft();
+        if (next_expr->isExprArith())
+        {
+            ArithExpression* next_arith = 
+                static_cast<ArithExpression*>(next_expr);
+            val_left = arithExprGen(cur_func_name, 
+                                    iden,
+                                    next_arith);
+        }
+    }
+
+    // Recursively generate the right arith expr
+    if (arith->getRight() != nullptr)
+    {
+        Expression *next_expr = arith->getRight();
+        if (next_expr->isExprArith())
+        {
+            ArithExpression* next_arith = 
+                static_cast<ArithExpression*>(next_expr);
+            val_right = arithExprGen(cur_func_name, 
+                                    iden,
+                                    next_arith);
+        }
+    }
+
+    if (val_left == nullptr)
+    {
+        Expression *left_expr = arith->getLeft();
+
+        // The left_expr must either be literal or call
+        assert((left_expr->isExprLiteral() || 
+                left_expr->isExprCall() ));
+
+        if (left_expr->isExprLiteral())
+        {
+            LiteralExpression* lit = 
+                static_cast<LiteralExpression*>(left_expr);
+
+            val_left = literalExprGen(cur_func_name, iden, lit);
+        }
+    }
+
+    if (val_right == nullptr)
+    {
+        Expression *right_expr = arith->getRight();
+
+        // The right_expr must either be literal or call
+	assert((right_expr->isExprLiteral() || 
+                right_expr->isExprCall() ));
+
+        if (right_expr->isExprLiteral())
+        {
+            LiteralExpression* lit = 
+                static_cast<LiteralExpression*>(right_expr);
+
+            val_right = literalExprGen(cur_func_name, iden, lit);
+        }
+    }
+
+    // Generate operators
+    auto opr = arith->getOperator();
+    bool int_opr = parser->isInFuncVarInt(cur_func_name, iden);
+
+    switch (opr) 
+    {
+        case '+':
+            if (int_opr)
+                return builder->CreateAdd(val_left, val_right);
+            else
+                return builder->CreateFAdd(val_left, val_right);
+        case '-':
+            if (int_opr)
+                return builder->CreateSub(val_left, val_right);
+            else
+                return builder->CreateFSub(val_left, val_right);
+        case '*':
+            if (int_opr)
+                return builder->CreateMul(val_left, val_right);
+            else
+                return builder->CreateFMul(val_left, val_right);
+        case '/':
+            if (int_opr)
+                return builder->CreateSDiv(val_left, val_right);
+            else
+                return builder->CreateFDiv(val_left, val_right);
+    }
+}
+
+Value* Codegen::literalExprGen(std::string& cur_func_name, 
+                               std::string& iden, 
+                               LiteralExpression* lit)
+{
+    Value *val = nullptr;
+
+    auto iter = local_var_tracking.find(lit->getLiteral());
+
+    if (iter == local_var_tracking.end())
+    {
+        assert((lit->isLiteralInt() || 
+                lit->isLiteralFloat()));
+
+        auto val_str = lit->getLiteral();
+        if (lit->isLiteralInt())
+        {
+            val = ConstantInt::get(*context, APInt(32, stoi(val_str)));
+        }
+        else if (lit->isLiteralFloat())
+        {
+            val = ConstantFP::get(*context, APFloat(stof(val_str)));
+        }
+    }
+    else
+    {
+        if (parser->isInFuncVarInt(cur_func_name, iden))
+        {
+            val = builder->CreateLoad(Type::getInt32Ty(*context),
+                                      iter->second);
+            
+        }
+        else if (parser->isInFuncVarFloat(cur_func_name, iden))
+        {
+            val = builder->CreateLoad(Type::getFloatTy(*context),
+                                      iter->second);
+            
+        }
+    }
+
+    assert(val != nullptr);
+    return val;
 }
 
 void Codegen::print()

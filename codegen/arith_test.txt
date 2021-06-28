@@ -3,12 +3,19 @@ main()
     set<int> x = 10;
     set<int> y = 20;
     set<int> z = x + y - 24 + 1 + 100;
-    set<int> z = x + y * 25 * 74 / 124 + 25 + 68;
+    printVarInt(z);
     set<int> z = y * 25 * 74 / 124 + x;
-    set<int> x = (1 + (1 + 4) * 5 + (7 - 8) / 10) * 100;
+    printVarInt(z);
+    set<int> x = (1 + (1 + 4) * 5 + (7 - 8) * 10) * 100;
+    printVarInt(x);
     set<int> y = x * y * z * (1 + 2);
+    printVarInt(y);
     set<int> z = 7 + 3 * (10 / (12 / (3 + 1) - 1));
+    printVarInt(z);
     set<int> z = (5 + 3) * 12  + (3 + 4) * 10 + 5;
+    printVarInt(z);
     set<int> z = 1 + 2 * (3 + 4) + 5;
+    printVarInt(z);
     set<int> z = 1 + 2 + 3 + 4 + 5;
+    printVarInt(z);
 }
