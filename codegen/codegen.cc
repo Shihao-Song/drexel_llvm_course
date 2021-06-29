@@ -88,13 +88,11 @@ void Codegen::funcGen(Statement *_statement)
 
         if (func_arg_types[i] == Parser::TypeRecord::INT)
         {
-            std::cout << func_args[i].getLiteral() << "\n";
             reg = builder->CreateAlloca(Type::getInt32Ty(*context));
             builder->CreateStore(val, reg);
 	}
         else if (func_arg_types[i] == Parser::TypeRecord::FLOAT)
         {
-            // std::cout << func_args[i].getLiteral() << "\n";
             reg = builder->CreateAlloca(Type::getFloatTy(*context));
             builder->CreateStore(val, reg);
 	}
@@ -175,6 +173,9 @@ void Codegen::setGen(std::string &cur_func_name,
 
 // built-ins are implemented in util/
 // please check bc_compile_and_run.bash and util for more info
+// This one is bit different from our callGen implementation
+// since we are defining printVarInt/printVarFloat at current
+// compilation unit.
 void Codegen::builtinGen(Statement *_statement)
 {
     static FunctionCallee printVarInt = 
@@ -186,7 +187,7 @@ void Codegen::builtinGen(Statement *_statement)
         module->getOrInsertFunction("printVarFloat",
             Type::getVoidTy(*context), 
             Type::getFloatTy(*context));
-   
+    
     BuiltinCallStatement *built_in_statement = 
         static_cast<BuiltinCallStatement*>(_statement);
 
@@ -318,6 +319,9 @@ Value* Codegen::arithExprGen(std::string& cur_func_name,
             val_right = literalExprGen(cur_func_name, iden, lit);
         }
     }
+
+    assert(val_left != nullptr);
+    assert(val_right != nullptr);
 
     // Generate operators
     auto opr = arith->getOperator();
