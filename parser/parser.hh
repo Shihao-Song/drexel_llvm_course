@@ -308,10 +308,10 @@ class BuiltinCallStatement : public Statement
 class RetStatement : public Statement
 {
   protected:
-    std::string ret;
+    Token ret;
 
   public:
-    RetStatement(std::string &_ret) : ret(_ret)
+    RetStatement(Token &_ret) : ret(_ret)
     {
         type = StatementType::RET_STATEMENT;
     }
@@ -321,7 +321,12 @@ class RetStatement : public Statement
         type = _statement.type;
         ret = _statement.ret;
     }
-    
+
+    auto &getLiteral() { return ret.getLiteral(); }
+
+    bool isLitInt() { return ret.isTokenInt(); }
+    bool isLitFloat() { return ret.isTokenFloat(); }
+
     void printStatement() override;
 };
 
@@ -501,13 +506,14 @@ class Parser
         }
     }
 
-  protected:
+  public:
     /************* Section one - record local variable types ***************/
     enum class TypeRecord : int
     {
         VOID, INT, FLOAT, MAX
     };
 
+  protected:
     // Track each local variable's type
     std::unordered_map<std::string,TypeRecord> local_var_type_tracker;
 
@@ -770,6 +776,12 @@ class Parser
                    == TypeRecord::FLOAT;
     }
 
+    auto& getFuncArgTypes(std::string &func_name)
+    {
+        auto iter = func_def_tracker.find(func_name);
+        assert(iter != func_def_tracker.end());
+        return iter->second.arg_types;
+    }
 };
 }
 

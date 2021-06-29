@@ -10,6 +10,7 @@ main()
     set<int> y = -20;
     set<int> z = x + y;
     printVarInt(z);
-
+    set<int> z = add(x, -20);
+    printVarInt(z);
     return 0;
 }

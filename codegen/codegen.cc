@@ -31,8 +31,6 @@ void Codegen::funcGen(Statement *_statement)
     auto& func_args = func_statement->getFuncArgs();
     auto& func_codes = func_statement->getFuncCodes();
 
-    if (func_name != "main") return;
-
     // IR Gen
     // Prepare argument types
     std::vector<Type *> ir_gen_func_args;
@@ -64,7 +62,6 @@ void Codegen::funcGen(Statement *_statement)
         FunctionType::get(ir_gen_ret_type, ir_gen_func_args, false);
 
     // Determine linkage type.
-    // TODO-Shihao, understand different types
     // So far, let's keep ExternalLinkage for all functions
     GlobalValue::LinkageTypes link_type = Function::ExternalLinkage;
 
@@ -74,13 +71,37 @@ void Codegen::funcGen(Statement *_statement)
                                              func_name, 
                                              module.get());
    
-    // TODO, track all the arguments.
-
     // Create a new basic block to start insertion into.
     BasicBlock *BB = BasicBlock::Create(*context, "", ir_gen_func);
     builder->SetInsertPoint(BB);
 
     // Generate the code section
+    // (1) Allocate space for arguments
+    std::cout << func_name << "\n";
+    auto i = 0;
+    for (auto &arg : ir_gen_func->args())
+    {
+        static auto &func_arg_types = parser->getFuncArgTypes(func_name);
+
+        Value *val = &arg;
+        Value *reg;
+
+        if (func_arg_types[i] == Parser::TypeRecord::INT)
+        {
+            reg = builder->CreateAlloca(Type::getInt32Ty(*context));
+            builder->CreateStore(val, reg);
+	}
+        else if (func_arg_types[i] == Parser::TypeRecord::FLOAT)
+        {
+            reg = builder->CreateAlloca(Type::getFloatTy(*context));
+            builder->CreateStore(val, reg);
+	}
+
+        local_var_tracking[func_args[i].getLiteral()] = reg;
+        i++;
+    }
+
+    // (2) Rest of the codes
     for (auto &statement : func_codes)
     {
         if (statement->isStatementSet())
@@ -91,11 +112,11 @@ void Codegen::funcGen(Statement *_statement)
         {
             builtinGen(statement.get());
         }
+        else if (statement->isStatementRet())
+        {
+            retGen(func_name, statement.get());
+        }
     }
-
-    // TODO-tmp ret
-    Value *ret_val = ConstantInt::get(*context, APInt(32, 0));
-    builder->CreateRet(ret_val);
 
     // Verify function
     verifyFunction(*ir_gen_func);
@@ -138,6 +159,12 @@ void Codegen::setGen(std::string &cur_func_name,
         ArithExpression *arith = static_cast<ArithExpression *>(expr);
 
         val = arithExprGen(cur_func_name, iden, arith);        
+    }
+    else if (expr->isExprCall())
+    {
+        CallExpression *call = static_cast<CallExpression*>(expr);
+
+        val = callExprGen(call);
     }
     
     builder->CreateStore(val, reg);
@@ -183,6 +210,42 @@ void Codegen::builtinGen(Statement *_statement)
                                          iter->second);
         builder->CreateCall(printVarFloat, val);
     }
+}
+
+void Codegen::retGen(std::string &cur_func_name,
+                     Statement *_statement)
+{
+    RetStatement* ret = static_cast<RetStatement*>(_statement);
+
+    auto &ret_val_str = ret->getLiteral();
+
+    Value *ret_val;
+    if (auto iter = local_var_tracking.find(ret_val_str);
+            iter != local_var_tracking.end())
+    {
+        if (parser->isInFuncVarInt(cur_func_name, ret_val_str))
+        {
+            ret_val = builder->CreateLoad(Type::getInt32Ty(*context),
+                                          iter->second);
+        } 
+        else if (parser->isInFuncVarFloat(cur_func_name, ret_val_str))
+        {
+            ret_val = builder->CreateLoad(Type::getFloatTy(*context),
+                                          iter->second);
+        }    
+    }
+    else
+    {
+        if (ret->isLitInt())
+        {
+            ret_val = ConstantInt::get(*context, APInt(32, stoi(ret_val_str)));
+        }
+        else if (ret->isLitFloat())
+        {
+            ret_val = ConstantFP::get(*context, APFloat(stof(ret_val_str)));
+        }
+    }
+    builder->CreateRet(ret_val);
 }
 
 Value* Codegen::arithExprGen(std::string& cur_func_name, 
@@ -324,6 +387,58 @@ Value* Codegen::literalExprGen(std::string& cur_func_name,
 
     assert(val != nullptr);
     return val;
+}
+
+Value* Codegen::callExprGen(CallExpression *call)
+{
+    auto &def = call->getCallFunc();
+    Function *call_func = module->getFunction(def);
+    if (!call_func)
+    {
+        std::cerr << "[Error] Please define function before CALL\n";
+        exit(0);
+    }
+
+    auto args = call->getArgNames();
+    auto arg_types = parser->getFuncArgTypes(def);
+    assert(args.size() == call_func->arg_size());
+    assert(arg_types.size() == call_func->arg_size());
+
+    std::vector<Value*> call_func_args;
+    for (auto i = 0; i < call_func->arg_size(); i++)
+    {
+        if (auto iter = local_var_tracking.find(args[i]);
+                iter != local_var_tracking.end())
+        {
+            Value *val; 
+            if (arg_types[i] == Parser::TypeRecord::INT)
+            {
+                val = builder->CreateLoad(Type::getInt32Ty(*context),
+                                          iter->second);
+            }
+            else if (arg_types[i] == Parser::TypeRecord::FLOAT)
+            {
+                val = builder->CreateLoad(Type::getFloatTy(*context),
+                                          iter->second);
+            }
+            call_func_args.push_back(val);
+        }
+        else
+        {
+            if (arg_types[i] == Parser::TypeRecord::INT)
+            {
+                call_func_args.push_back(ConstantInt::get(*context, 
+                    APInt(32, stoi(args[i]))));
+            }
+            else if (arg_types[i] == Parser::TypeRecord::FLOAT)
+            {
+                call_func_args.push_back(ConstantFP::get(*context, 
+                    APFloat(stof(args[i]))));
+            }
+        }
+    }
+
+    return builder->CreateCall(call_func, call_func_args);
 }
 
 void Codegen::print()

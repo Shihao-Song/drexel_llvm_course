@@ -18,4 +18,5 @@ main()
     printVarInt(z);
     set<int> z = 1 + 2 + 3 + 4 + 5;
     printVarInt(z);
+    return 0;
 }

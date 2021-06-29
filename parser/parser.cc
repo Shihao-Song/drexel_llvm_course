@@ -161,9 +161,10 @@ void Parser::parseProgram()
                 strictTypeCheck(cur_token, ret_type);
 
                 std::unique_ptr<RetStatement> ret_statement = 
-                    std::make_unique<RetStatement>(cur_token.getLiteral());
+                    std::make_unique<RetStatement>(cur_token);
                 // ret_statement->printStatement();
 
+                assert(next_token.isTokenSemicolon());
                 codes.push_back(std::move(ret_statement));
             }
         }
@@ -382,7 +383,7 @@ void RetStatement::printStatement()
 {
     std::cout << "    {\n";
     std::cout << "      Return\n";
-    std::cout << "      " << ret << "\n";
+    std::cout << "      " << ret.getLiteral() << "\n";
     std::cout << "    }\n";
 }
 
