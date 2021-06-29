@@ -77,22 +77,24 @@ void Codegen::funcGen(Statement *_statement)
 
     // Generate the code section
     // (1) Allocate space for arguments
-    std::cout << func_name << "\n";
     auto i = 0;
+    std::vector<Parser::TypeRecord> func_arg_types;
+    if (ir_gen_func->arg_size())
+        func_arg_types = parser->getFuncArgTypes(func_name);
     for (auto &arg : ir_gen_func->args())
     {
-        static auto &func_arg_types = parser->getFuncArgTypes(func_name);
-
         Value *val = &arg;
         Value *reg;
 
         if (func_arg_types[i] == Parser::TypeRecord::INT)
         {
+            std::cout << func_args[i].getLiteral() << "\n";
             reg = builder->CreateAlloca(Type::getInt32Ty(*context));
             builder->CreateStore(val, reg);
 	}
         else if (func_arg_types[i] == Parser::TypeRecord::FLOAT)
         {
+            // std::cout << func_args[i].getLiteral() << "\n";
             reg = builder->CreateAlloca(Type::getFloatTy(*context));
             builder->CreateStore(val, reg);
 	}
