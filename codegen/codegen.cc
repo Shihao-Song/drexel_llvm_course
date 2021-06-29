@@ -171,7 +171,7 @@ void Codegen::setGen(std::string &cur_func_name,
     local_var_tracking[iden] = reg;
 }
 
-// built-ins are implemented in util/
+// built-ins are implemented in util/ and linked through llvm-link
 // please check bc_compile_and_run.bash and util for more info
 // This one is bit different from our callGen implementation
 // since we are defining printVarInt/printVarFloat at current
