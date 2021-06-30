@@ -5,15 +5,8 @@ namespace Frontend
 Parser::Parser(const char* fn) : lexer(new Lexer(fn))
 {
     // Pre-load all the tokens
-    Token tok;
-    while (lexer->getToken(tok))
-    {
-        tokens.push_back(tok);
-    }
-    tokens.push_back(tok);
-
-    cur_token = tokens[token_index];
-    next_token = tokens[token_index + 1];
+    lexer->getToken(cur_token);
+    lexer->getToken(next_token);
 
     // Fill the pre-built 
     std::vector<TypeRecord> arg_types;
@@ -38,13 +31,8 @@ Parser::Parser(const char* fn) : lexer(new Lexer(fn))
 
 void Parser::advanceTokens()
 {
-    token_index += 1;
-    if (token_index == tokens.size()) return;
-
-    cur_token = tokens[token_index];
-
-    if ((token_index + 1) == tokens.size()) return;
-    next_token = tokens[token_index + 1];
+    cur_token = next_token;
+    lexer->getToken(next_token);
 }
 
 void Parser::parseProgram()
@@ -112,6 +100,8 @@ void Parser::parseProgram()
             while (!cur_token.isTokenRP())
             {
                 advanceTokens();
+                if (cur_token.isTokenRP()) break; // no args
+
                 std::string arg_type = cur_token.getLiteral();
 
                 advanceTokens();
@@ -239,21 +229,49 @@ std::unique_ptr<Expression> Parser::parseExpression()
 
             std::unique_ptr<Expression> right;
 
-            // We are trying to add/minus something with higher priority
-            if (cur_token.isTokenLP() || 
-                peakNextArithOpr().isTokenAsterisk() || 
-                peakNextArithOpr().isTokenSlash())
+            // Priority one. ()
+            if (cur_token.isTokenLP())
             {
                 right = parseTerm();
+                left = std::make_unique<ArithExpression>(left, 
+                       right, 
+                       expr_type);
+                continue;
+            }
+
+            // Priority two. *, /
+            // check if the next token is a function call
+	    std::unique_ptr<Expression> call_expr = nullptr;
+            if (isFuncDef(cur_token.getLiteral()))
+            {
+                strictTypeCheck(cur_token);
+                call_expr = parseCall();
+	    }
+
+            if (next_token.isTokenAsterisk() ||
+                next_token.isTokenSlash())
+            {
+                if (call_expr != nullptr)
+                {
+                    advanceTokens();
+                    right = parseTerm(std::move(call_expr));
+                }
+                else
+                {
+                    right = parseTerm();
+                }
             }
             else
             {
-                strictTypeCheck(cur_token);
-                // check if it is a function call
-                if (isFuncDef(cur_token.getLiteral()))
-                    right = parseCall();
+                if (call_expr != nullptr)
+                {
+                    right = std::move(call_expr);
+                }
                 else
+                {
+                    strictTypeCheck(cur_token);
                     right = std::make_unique<LiteralExpression>(cur_token);
+                }
                 advanceTokens();
             }
 
@@ -269,9 +287,11 @@ std::unique_ptr<Expression> Parser::parseExpression()
 }
 
 // For Div/Mul
-std::unique_ptr<Expression> Parser::parseTerm()
+std::unique_ptr<Expression> Parser::parseTerm(
+    std::unique_ptr<Expression> pending_left)
 {   
-    std::unique_ptr<Expression> left = parseFactor();
+    std::unique_ptr<Expression> left = 
+        (pending_left != nullptr) ? std::move(pending_left) : parseFactor();
 
     while (true)
     {
@@ -324,7 +344,7 @@ std::unique_ptr<Expression> Parser::parseTerm()
 
 // Deal with () here
 std::unique_ptr<Expression> Parser::parseFactor()
-{ 
+{
     std::unique_ptr<Expression> left;
 
     if (cur_token.isTokenLP())

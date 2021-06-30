@@ -301,6 +301,13 @@ Value* Codegen::arithExprGen(std::string& cur_func_name,
 
             val_left = literalExprGen(cur_func_name, iden, lit);
         }
+        else if (left_expr->isExprCall())
+        {
+            CallExpression* call = 
+                static_cast<CallExpression*>(left_expr);
+
+            val_left = callExprGen(call);
+	}
     }
 
     if (val_right == nullptr)
@@ -318,6 +325,13 @@ Value* Codegen::arithExprGen(std::string& cur_func_name,
 
             val_right = literalExprGen(cur_func_name, iden, lit);
         }
+        else if (right_expr->isExprCall())
+        {
+            CallExpression* call = 
+                static_cast<CallExpression*>(right_expr);
+
+            val_right = callExprGen(call);
+	}
     }
 
     assert(val_left != nullptr);

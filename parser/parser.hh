@@ -483,29 +483,9 @@ class Parser
     Program program;
 
   protected:
-    uint32_t token_index = 0;
     Token cur_token;
     Token next_token;    
-
-    // TODO-Future work, there may be an expression as the argument
-    // to call expression. So, add(x,y) is supported, but something
-    // like add(x, y + x) is not supported. However, given the 
-    // nature of strict type checking of our language, this feature
-    // may not be that important.
-    Token peakNextArithOpr()
-    {
-        auto iter = token_index + 1;
-        while (true)
-        {
-            if (iter == tokens.size()) 
-                return Token(Token::TokenType::TOKEN_EOF);
-
-            Token &cur_tok = tokens[iter];
-            if (cur_tok.isTokenArithOpr()) return cur_tok;
-            iter++;
-        }
-    }
-
+    
   public:
     /************* Section one - record local variable types ***************/
     enum class TypeRecord : int
@@ -698,12 +678,6 @@ class Parser
     }
 
   protected:
-    // We pre-loaded all the tokens, which should not be considered
-    // as the most optimal solution. But this can allow us to 
-    // easily implement peak() functionality. This should be
-    // re-designed when we are scaling the compiler for bigger
-    // codebase.
-    std::vector<Token> tokens;
     std::unique_ptr<Lexer> lexer;
 
   public:
@@ -720,8 +694,10 @@ class Parser
     std::unique_ptr<Statement> parseSetStatement();
 
     std::unique_ptr<Expression> parseExpression();
-    std::unique_ptr<Expression> parseTerm();
+    std::unique_ptr<Expression> parseTerm(
+        std::unique_ptr<Expression> pending_left = nullptr);
     std::unique_ptr<Expression> parseFactor();
+
     std::unique_ptr<Expression> parseCall();
 
   protected:

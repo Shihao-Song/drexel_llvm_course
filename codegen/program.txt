@@ -10,6 +10,13 @@ def<float> add_v2(float u, float v)
     return w; 
 }
 
+def<int> add_v3()
+{
+    set<int> prin = 7 + 3 * (10 / (12 / add_v1(3, 1) - 1));
+    printVarInt(prin);
+    return 0;
+}
+
 main()
 {
     set<int> x = 10;
@@ -21,6 +28,8 @@ main()
     set<float> b = -14.5;
     set<float> c = add_v2(a, b);
     printVarFloat(c);
+
+    set<int> dummy_val = add_v3();
 
     return 0;
 }
