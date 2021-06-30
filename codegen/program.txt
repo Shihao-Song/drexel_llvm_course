@@ -1,35 +1,34 @@
-def<int> add_v1(int x, int y)
+def<int> addi(int x, int y)
 {
     set<int> z = x + y;
     return z;
 }
 
-def<float> add_v2(float u, float v)
+def<float> addf(float u, float v)
 {
     set<float> w = u + v;
     return w; 
 }
 
-def<int> add_v3()
+def<void> print()
 {
-    set<int> prin = 7 + 3 * (10 / (12 / add_v1(3, 1) - 1));
+    set<int> prin = 7 + 3 * (10 / (12 / addi(3, 1) - 1));
     printVarInt(prin);
-    return 0;
 }
 
 main()
 {
     set<int> x = 10;
     set<int> y = -20;
-    set<int> z = add_v1(x, y);
+    set<int> z = addi(x, y);
     printVarInt(z);
     
     set<float> a = 7.5;
     set<float> b = -14.5;
-    set<float> c = add_v2(a, b);
+    set<float> c = addf(addf(a, b), -2.0 * (0.7 + 0.8));
     printVarFloat(c);
 
-    set<int> dummy_val = add_v3();
+    print();
 
     return 0;
 }

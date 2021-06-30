@@ -4,6 +4,11 @@ int add(int x, int y)
     return z;
 }
 
+void print()
+{
+    int x = 0;
+}
+
 int main()
 {
     int x = 10;

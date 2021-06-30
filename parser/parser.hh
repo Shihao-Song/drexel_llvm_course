@@ -74,7 +74,7 @@ class CallExpression : public Expression
 {
   protected:
     Token def;
-    std::vector<Token> args;  
+    std::vector<std::shared_ptr<Expression>> args;
 
   public:
     CallExpression(const CallExpression &_expr) 
@@ -84,7 +84,8 @@ class CallExpression : public Expression
         type = ExpressionType::CALL;
     }
 
-    CallExpression(Token &_tok, std::vector<Token> _args) 
+    CallExpression(Token &_tok, 
+        std::vector<std::shared_ptr<Expression>>_args) 
         : def(_tok)
         , args(_args)
     {
@@ -94,22 +95,27 @@ class CallExpression : public Expression
     // Debug print associated with the print in ArithExp
     std::string print(unsigned level) override
     {
-        std::string ret = "[CALL] " + def.getLiteral()
-                        + " [ARGS] ";
-        for (auto &arg : args) ret += (arg.getLiteral() + " ");
+        std::string prefix(level * 2, ' ');
 
-	ret += "\n";
+        std::string ret = prefix + "{\n";
+        ret += (prefix + "  [CALL] " + def.getLiteral() + "\n");
+        unsigned idx = 0;
+        for (auto &arg : args)
+        {
+            ret += (prefix + "  [ARG " + std::to_string(idx++) + "]\n");
+            ret += (prefix + "  {\n");
+            if (arg->getType() == Expression::ExpressionType::LITERAL)
+                ret += (prefix + "    ");
+            ret += arg->print(level + 2);
+            ret += (prefix + "  }\n");
+        }
+
+	ret += (prefix + "}\n");
         return ret;
     }
 
     auto &getCallFunc() { return def.getLiteral(); }
-    auto getArgNames()
-    { 
-        std::vector<std::string> ret;
-        for (auto &arg : args)
-            ret.push_back(arg.getLiteral());
-        return ret;
-    }
+    auto &getArgs() { return args; }
 };
 
 class LiteralExpression : public Expression
@@ -196,13 +202,15 @@ class ArithExpression : public Expression
         std::string ret = "";
         if (left != nullptr)
         {
-            if (left->getType() == ExpressionType::LITERAL || 
-                left->getType() == ExpressionType::CALL)
+            if (left->getType() == ExpressionType::LITERAL)
             {
                 ret += prefix;
             }
 
-            ret += left->print(level + 1);
+            if (left->getType() == ExpressionType::CALL)
+                ret += left->print(level);
+            else
+                ret += left->print(level + 1);
         }
         
         if (right != nullptr)
@@ -226,13 +234,15 @@ class ArithExpression : public Expression
             }
             ret += "\n";
             
-            if (right->getType() == ExpressionType::LITERAL || 
-                right->getType() == ExpressionType::CALL)
+            if (right->getType() == ExpressionType::LITERAL) 
             {
                 ret += prefix;
             }
 
-            ret += right->print(level + 1);
+            if (right->getType() == ExpressionType::CALL)
+                ret += right->print(level);
+            else
+                ret += right->print(level + 1);
         }
          
         return ret;
@@ -249,6 +259,7 @@ class Statement
         FUNC_STATEMENT,
         RET_STATEMENT,
         BUILT_IN_CALL_STATEMENT,
+        NORMAL_CALL_STATEMENT,
         ILLEGAL
     };
 
@@ -263,38 +274,40 @@ class Statement
     bool isStatementFunc() { return type == StatementType::FUNC_STATEMENT; }
     bool isStatementSet() { return type == StatementType::SET_STATEMENT; }
     bool isStatementRet() { return type == StatementType::RET_STATEMENT; }
-    bool isStatementBuiltin() 
+    bool isStatementBuiltinCall() 
     {
         return type == StatementType::BUILT_IN_CALL_STATEMENT; 
     }
+    bool isStatementNormalCall()
+    {
+        return type == StatementType::NORMAL_CALL_STATEMENT;
+    }
 };
 
-class BuiltinCallStatement : public Statement
+class CallStatement : public Statement
 {
   protected:
     std::shared_ptr<Expression> expr;
 
   public:
-    BuiltinCallStatement(std::unique_ptr<Expression> &_expr)
+    CallStatement(std::unique_ptr<Expression> &_expr,
+                  StatementType _type)
     {
-        type = StatementType::BUILT_IN_CALL_STATEMENT;
+        type = _type;
 
         expr = std::move(_expr);
     }
     
-    BuiltinCallStatement(const BuiltinCallStatement &_statement)
+    CallStatement(const CallStatement &_statement)
     {
-        type = StatementType::BUILT_IN_CALL_STATEMENT;
+        type = _statement.type;
 
         expr = std::move(_statement.expr);
     }
     
     void printStatement() override
     {
-        std::cout << "    {\n";
-        std::cout << "      Built-in call\n";
-        std::cout << "      " << expr->print(4);
-        std::cout << "    }\n";
+        std::cout << expr->print(2);
     }
 
     CallExpression* getCallExpr()
@@ -573,7 +586,9 @@ class Parser
 
         FuncRecord record;
         auto &ret_type = record.ret_type;
-        if (_type == FuncStatement::RetType::INT)
+        if (_type == FuncStatement::RetType::VOID)
+            ret_type = TypeRecord::VOID;
+	else if (_type == FuncStatement::RetType::INT)
             ret_type = TypeRecord::INT;
         else if (_type == FuncStatement::RetType::FLOAT)
             ret_type = TypeRecord::FLOAT;
@@ -632,24 +647,6 @@ class Parser
         assert(false && 
                "[Error] Inconsistent return type \
                or undefined variable");
-    }
-    // strictTypeCheck v3 - check if the passed tokens have the same type as
-    // the function def
-    void strictTypeCheck(Token &_def_tok, std::vector<Token> args)
-    {
-        auto iter = func_def_tracker.find(_def_tok.getLiteral());
-        assert(iter != func_def_tracker.end());
-
-        auto &ans = iter->second.arg_types;
-        assert(ans.size() == args.size() &&
-               "#params don't match");
-
-        for (auto i = 0; i < args.size(); i++)
-        {
-            TypeRecord arg_type = getTokenType(args[i]);
-            assert(arg_type == ans[i] && 
-                   "param types don't match");
-        }
     }
 
     TypeRecord getTokenType(Token &_tok)

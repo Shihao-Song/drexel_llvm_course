@@ -19,6 +19,13 @@ define dso_local i32 @add(i32 %0, i32 %1) #0 {
 }
 
 ; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @print() #0 {
+  %1 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
   %1 = alloca i32, align 4
   %2 = alloca i32, align 4

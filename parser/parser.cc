@@ -139,8 +139,9 @@ void Parser::parseProgram()
                      cur_token.isTokenPrintVarFloat())
             {
                 auto code = parseCall();
-                std::unique_ptr<BuiltinCallStatement> built_in = 
-                    std::make_unique<BuiltinCallStatement>(code);
+                std::unique_ptr<CallStatement> built_in = 
+                    std::make_unique<CallStatement>(code, 
+                        Statement::StatementType::BUILT_IN_CALL_STATEMENT);
                 // built_in->printStatement();
                 codes.push_back(std::move(built_in));
             }
@@ -156,6 +157,21 @@ void Parser::parseProgram()
 
                 assert(next_token.isTokenSemicolon());
                 codes.push_back(std::move(ret_statement));
+            }
+            else
+            {
+                // Should be a normal function call
+                if (auto iter = func_def_tracker.find(cur_token.getLiteral());
+                        iter == func_def_tracker.end())
+                {
+                    continue;
+                }
+                auto code = parseCall();
+                std::unique_ptr<CallStatement> call = 
+                    std::make_unique<CallStatement>(code, 
+                        Statement::StatementType::NORMAL_CALL_STATEMENT);
+
+                codes.push_back(std::move(call));
             }
         }
 
@@ -375,26 +391,27 @@ std::unique_ptr<Expression> Parser::parseCall()
     assert(cur_token.isTokenLP());
 
     advanceTokens();
-    std::vector<Token> args;
+    std::vector<std::shared_ptr<Expression>> args;
+
+    auto &arg_types = getFuncArgTypes(def_tok.getLiteral());
+    unsigned idx = 0;
     while (!cur_token.isTokenRP())
     {
-        if (cur_token.isTokenComma()) advanceTokens();
+        if (cur_token.isTokenRP())
+            break;
 
-        assert((cur_token.isTokenIden() 
-                || cur_token.isTokenInt()
-                || cur_token.isTokenFloat())
-                && "only allow identifier or number type token");
+        auto swap = cur_expr_type;
+        cur_expr_type = arg_types[idx++];
+        args.push_back(parseExpression());
+        cur_expr_type = swap;
 
-        args.push_back(cur_token);
+        if (cur_token.isTokenRP())
+            break;
         advanceTokens();
     }
 
-    strictTypeCheck(def_tok, args);
-
     std::unique_ptr<CallExpression> ret = 
         std::make_unique<CallExpression>(def_tok, args);
-
-    // advanceTokens();
 
     return ret;
 }
@@ -412,8 +429,7 @@ void SetStatement::printStatement()
     std::cout << "    {\n";
     std::cout << "      " + iden->print() << "\n";
     std::cout << "      =\n";
-    if (expr->getType() == Expression::ExpressionType::LITERAL ||
-        expr->getType() == Expression::ExpressionType::CALL)
+    if (expr->getType() == Expression::ExpressionType::LITERAL)
     {
         std::cout << "      " << expr->print(4);
     }
