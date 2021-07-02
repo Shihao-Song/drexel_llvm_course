@@ -1,7 +1,11 @@
 def<int> addi(int x, int y)
 {
-    set<int> z = x + y;
-    return z;
+    return x + y;
+}
+
+def<int> addiTimesTwo(int x, int y)
+{
+    return addi(x,y) * 2;
 }
 
 def<float> addf(float u, float v)
@@ -29,6 +33,8 @@ main()
     printVarFloat(c);
 
     print();
+
+    printVarInt(addiTimesTwo(2, 3));
 
     return 0;
 }

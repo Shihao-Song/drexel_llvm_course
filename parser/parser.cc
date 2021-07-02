@@ -149,13 +149,16 @@ void Parser::parseProgram()
             {
                 advanceTokens();
 
-                strictTypeCheck(cur_token, ret_type);
+                if (iden->getLiteral() == "main")
+                    cur_expr_type = TypeRecord::INT;
+                else
+                    cur_expr_type = getFuncRetType(iden->getLiteral());
+
+                auto ret = parseExpression();
 
                 std::unique_ptr<RetStatement> ret_statement = 
-                    std::make_unique<RetStatement>(cur_token);
-                // ret_statement->printStatement();
+                    std::make_unique<RetStatement>(ret);
 
-                assert(next_token.isTokenSemicolon());
                 codes.push_back(std::move(ret_statement));
             }
             else
@@ -480,8 +483,15 @@ std::unique_ptr<Expression> Parser::parseCall()
 void RetStatement::printStatement()
 {
     std::cout << "    {\n";
-    std::cout << "      Return\n";
-    std::cout << "      " << ret.getLiteral() << "\n";
+    std::cout << "      [Return]\n";
+    if (ret->getType() == Expression::ExpressionType::LITERAL)
+    {
+        std::cout << "      " << ret->print(4);
+    }
+    else
+    {
+        std::cout << ret->print(4);
+    }
     std::cout << "    }\n";
 }
 

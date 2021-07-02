@@ -234,7 +234,6 @@ void Codegen::builtinGen(Statement *_statement)
         val = callExprGen(call);
     }
 
-
     if (func_name == "printVarInt")
     {
         builder->CreateCall(printVarInt, val);
@@ -261,35 +260,44 @@ void Codegen::retGen(std::string &cur_func_name,
 {
     RetStatement* ret = static_cast<RetStatement*>(_statement);
 
-    auto &ret_val_str = ret->getLiteral();
+    auto expr = ret->getRetVal();
 
-    Value *ret_val;
-    if (auto iter = local_var_tracking.find(ret_val_str);
-            iter != local_var_tracking.end())
+    bool int_opr;
+    if (cur_func_name == "main")
     {
-        if (parser->isInFuncVarInt(cur_func_name, ret_val_str))
-        {
-            ret_val = builder->CreateLoad(Type::getInt32Ty(*context),
-                                          iter->second);
-        } 
-        else if (parser->isInFuncVarFloat(cur_func_name, ret_val_str))
-        {
-            ret_val = builder->CreateLoad(Type::getFloatTy(*context),
-                                          iter->second);
-        }    
+        int_opr = true;
     }
     else
     {
-        if (ret->isLitInt())
-        {
-            ret_val = ConstantInt::get(*context, APInt(32, stoi(ret_val_str)));
-        }
-        else if (ret->isLitFloat())
-        {
-            ret_val = ConstantFP::get(*context, APFloat(stof(ret_val_str)));
-        }
+        auto ret_type = parser->getFuncRetType(cur_func_name);
+        int_opr = (ret_type == Parser::TypeRecord::INT) ?
+                  true : false;
     }
-    builder->CreateRet(ret_val);
+
+    Value *val;
+    if (expr->isExprLiteral())
+    {
+        LiteralExpression *lit = 
+            static_cast<LiteralExpression*>(expr.get());
+
+        val = literalExprGen(int_opr, lit);
+    }
+    else if (expr->isExprArith())
+    {
+        ArithExpression *arith = 
+            static_cast<ArithExpression*>(expr.get());
+
+        val = arithExprGen(int_opr, arith);
+    }
+    else if (expr->isExprCall())
+    {
+        CallExpression *call = 
+            static_cast<CallExpression*>(expr.get());
+
+        val = callExprGen(call);
+    }
+
+    builder->CreateRet(val);
 }
 
 Value* Codegen::arithExprGen(std::string& cur_func_name, 

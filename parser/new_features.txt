@@ -1,7 +1,6 @@
 def<int> addi(int x, int y)
 {
-    set<int> z = x + y;
-    return z;
+    return x + y;
 }
 
 def<float> addf(float x, float y)

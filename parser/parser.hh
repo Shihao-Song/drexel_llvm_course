@@ -183,18 +183,7 @@ class ArrayExpression : public Expression
             ret += (prefix + "    ");
         ret += num_ele->print(level + 2);
         ret += (prefix + "  }\n");
-        /*
-        unsigned idx = 0;
-        for (auto &arg : args)
-        {
-            ret += (prefix + "  [ARG " + std::to_string(idx++) + "]\n");
-            ret += (prefix + "  {\n");
-            if (arg->getType() == Expression::ExpressionType::LITERAL)
-                ret += (prefix + "    ");
-            ret += arg->print(level + 2);
-            ret += (prefix + "  }\n");
-        }
-        */
+
         ret += (prefix + "  [ELEMENTS]\n");
         ret += (prefix + "  {\n");
         for (auto &ele : eles)
@@ -388,10 +377,10 @@ class CallStatement : public Statement
 class RetStatement : public Statement
 {
   protected:
-    Token ret;
+    std::shared_ptr<Expression> ret;
 
   public:
-    RetStatement(Token &_ret) : ret(_ret)
+    RetStatement(std::unique_ptr<Expression> &_ret) : ret(std::move(_ret))
     {
         type = StatementType::RET_STATEMENT;
     }
@@ -399,13 +388,10 @@ class RetStatement : public Statement
     RetStatement(const RetStatement &_statement)
     {
         type = _statement.type;
-        ret = _statement.ret;
+        ret = std::move(_statement.ret);
     }
 
-    auto &getLiteral() { return ret.getLiteral(); }
-
-    bool isLitInt() { return ret.isTokenInt(); }
-    bool isLitFloat() { return ret.isTokenFloat(); }
+    auto &getRetVal() { return ret; }
 
     void printStatement() override;
 };
@@ -707,6 +693,7 @@ class Parser
         func_def_tracker[_def] = record;
     }
 
+    
     bool isFuncDef(std::string &_def)
     {
         if (auto iter = func_def_tracker.find(_def);
@@ -731,22 +718,6 @@ class Parser
         TypeRecord tok_type = getTokenType(_tok);
         assert(tok_type == cur_expr_type && 
                "[Error] Inconsistent type within expression \
-               or undefined variable");
-    }
-    // strictTypeCheck v2 - check the token has the same type as the specified
-    // function return type, usually for return statement
-    void strictTypeCheck(Token &_tok, FuncStatement::RetType _type)
-    {
-        TypeRecord tok_type = getTokenType(_tok);
-
-        if (tok_type == TypeRecord::INT && 
-            _type == FuncStatement::RetType::INT) return;
-	
-        if (tok_type == TypeRecord::FLOAT && 
-            _type == FuncStatement::RetType::FLOAT) return;
-
-        assert(false && 
-               "[Error] Inconsistent return type \
                or undefined variable");
     }
 
@@ -857,6 +828,15 @@ class Parser
         assert(iter != func_def_tracker.end());
         return iter->second.arg_types;
     }
+
+    auto &getFuncRetType(std::string &_def)
+    {
+        auto iter = func_def_tracker.find(_def);
+        assert(iter != func_def_tracker.end());
+
+        return iter->second.ret_type;
+    }
+
 };
 }
 
