@@ -47,6 +47,10 @@ std::string Token::prinTokenType()
             return std::string("LBRACE");
         case TokenType::TOKEN_RBRACE:
             return std::string("RBRACE");
+        case TokenType::TOKEN_LBRACKET:
+            return std::string("LBRACKET");
+        case TokenType::TOKEN_RBRACKET:
+            return std::string("RBRACKET");
         case TokenType::TOKEN_MAIN:
             return std::string("MAIN");
         case TokenType::TOKEN_DEF:
@@ -55,6 +59,8 @@ std::string Token::prinTokenType()
             return std::string("RETURN");
         case TokenType::TOKEN_SET:
             return std::string("SET");
+        case TokenType::TOKEN_ARRAY:
+            return std::string("ARRAY");
         case TokenType::TOKEN_DES_VOID:
             return std::string("DES-VOID");
         case TokenType::TOKEN_DES_INT:
@@ -92,12 +98,16 @@ Lexer::Lexer(const char* fn)
     seps.insert({')', Token::TokenType::TOKEN_RPAREN});
     seps.insert({'{', Token::TokenType::TOKEN_LBRACE});
     seps.insert({'}', Token::TokenType::TOKEN_RBRACE});
+    seps.insert({'[', Token::TokenType::TOKEN_LBRACKET});
+    seps.insert({']', Token::TokenType::TOKEN_RBRACKET});
 
     // fill pre-defined keywords
     keywords.insert({"main", Token::TokenType::TOKEN_MAIN});
     keywords.insert({"def", Token::TokenType::TOKEN_DEF});
     keywords.insert({"return", Token::TokenType::TOKEN_RETURN});
     keywords.insert({"set", Token::TokenType::TOKEN_SET});
+    keywords.insert({"array", Token::TokenType::TOKEN_ARRAY});
+
     keywords.insert({"void", Token::TokenType::TOKEN_DES_VOID});
     keywords.insert({"int", Token::TokenType::TOKEN_DES_INT});
     keywords.insert({"float", Token::TokenType::TOKEN_DES_FLOAT});
@@ -247,8 +257,9 @@ bool Lexer::safeNegSignBegin(char c)
     // x = 10 + -10;
     // x = add(4, -10);
     // x = add(-10, 4);
+    // {-1, 2}
 
     return (c == '+' || c == '-' || c == '*' || c == '/' || 
-            c == '=' || c == '(' || c == ',');
+            c == '=' || c == '(' || c == ',' || c == '{');
 }
 }

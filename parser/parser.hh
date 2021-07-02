@@ -37,13 +37,14 @@ class Expression
     enum class ExpressionType : int
     {
         LITERAL, // i.e., 1
+        ARRAY,
 
         PLUS, // i.e., 1 + 2
         MINUS, // i.e., 1 - 2
         ASTERISK, // i.e., 1 * 2
         SLASH, // i.e., 1 / 2
 
-        CALL, // TODO-shihao
+        CALL,
 
         ILLEGAL
     };
@@ -60,6 +61,7 @@ class Expression
     virtual std::string print(unsigned level) { return "[Error] No implementation"; }
 
     bool isExprLiteral() { return type == ExpressionType::LITERAL; }
+    bool isExprArray() { return type == ExpressionType::ARRAY; }
     bool isExprCall() { return type == ExpressionType::CALL; }
     bool isExprArith()
     {
@@ -146,6 +148,71 @@ class LiteralExpression : public Expression
         return (tok.getLiteral() + "\n");
     }
 };
+
+class ArrayExpression : public Expression
+{
+  protected:
+    std::shared_ptr<Expression> num_ele;
+    std::vector<std::shared_ptr<Expression>> eles;
+
+  public:
+    ArrayExpression(std::unique_ptr<Expression> &_num_ele,
+                    std::vector<std::shared_ptr<Expression>> &_eles)
+    {
+        num_ele = std::move(_num_ele);
+        eles = std::move(_eles);
+        type = ExpressionType::ARRAY;
+    }
+
+    ArrayExpression(const ArrayExpression &_expr)
+    {
+        num_ele = std::move(_expr.num_ele);
+        eles = std::move(_expr.eles);
+        type = _expr.type;
+    }
+    
+    std::string print(unsigned level) override
+    {
+        std::string prefix(level * 2, ' ');
+
+        std::string ret = prefix + "{\n";
+        ret += (prefix + "  [ARRAY] \n");
+        ret += (prefix + "  [NUM ELEMENTS]\n");
+        ret += (prefix + "  {\n");
+        if (num_ele->isExprLiteral())
+            ret += (prefix + "    ");
+        ret += num_ele->print(level + 2);
+        ret += (prefix + "  }\n");
+        /*
+        unsigned idx = 0;
+        for (auto &arg : args)
+        {
+            ret += (prefix + "  [ARG " + std::to_string(idx++) + "]\n");
+            ret += (prefix + "  {\n");
+            if (arg->getType() == Expression::ExpressionType::LITERAL)
+                ret += (prefix + "    ");
+            ret += arg->print(level + 2);
+            ret += (prefix + "  }\n");
+        }
+        */
+        ret += (prefix + "  [ELEMENTS]\n");
+        ret += (prefix + "  {\n");
+        for (auto &ele : eles)
+        {
+            ret += (prefix + "    {\n");
+            if (ele->isExprLiteral())
+                ret += (prefix + "      ");
+            ret += ele->print(level + 3);
+            ret += (prefix + "    }\n");
+        }
+        ret += (prefix + "  }\n");
+	ret += (prefix + "}\n");
+        return ret;
+    }
+
+};
+
+// TODO-Shihao IndexExpression
 
 class ArithExpression : public Expression
 {
@@ -503,7 +570,18 @@ class Parser
     /************* Section one - record local variable types ***************/
     enum class TypeRecord : int
     {
-        VOID, INT, FLOAT, MAX
+        VOID,
+        VOID_PTR,
+
+        INT,
+        INT_ARRAY,
+        INT_PTR,
+
+        FLOAT,
+        FLOAT_ARRAY,
+        FLOAT_PTR,
+
+        MAX
     };
 
   protected:
@@ -511,12 +589,26 @@ class Parser
     std::unordered_map<std::string,TypeRecord> local_var_type_tracker;
 
     // recordLocalVars v1 - record the arguments
-    void recordLocalVars(FuncStatement::Argument &arg)
+    void recordLocalVars(FuncStatement::Argument &arg,
+                         bool is_array = false,
+                         bool is_ptr = false)
     {
         // determine argument type
-        TypeRecord arg_type = TypeRecord::MAX;
-        if (arg.isArgInt()) arg_type = TypeRecord::INT;
-        else if (arg.isArgFloat()) arg_type = TypeRecord::FLOAT;
+        TypeRecord arg_type;
+        if (arg.isArgInt())
+        {
+            if (is_array)
+                arg_type = TypeRecord::INT_ARRAY;
+            else
+                arg_type = TypeRecord::INT;
+        }
+        else if (arg.isArgFloat())
+        {
+            if (is_array)
+                arg_type = TypeRecord::FLOAT_ARRAY;
+            else
+                arg_type = TypeRecord::FLOAT;
+        }
         assert(arg_type != TypeRecord::MAX);
 
         // argument name can not be duplicated
@@ -536,17 +628,27 @@ class Parser
         }
     }
     // recordLocalVars v2 - record local variables
-    void recordLocalVars(Token &_tok, Token &_type_tok)
+    void recordLocalVars(Token &_tok, Token &_type_tok,
+                         bool is_array = false,
+                         bool is_ptr = false)
     {
         // determine the token type
         TypeRecord var_type;
         if (_type_tok.isTokenDesInt())
         {
-            var_type = TypeRecord::INT;
+            cur_expr_type = TypeRecord::INT;
+            if (is_array)
+                var_type = TypeRecord::INT_ARRAY;
+            else
+                var_type = TypeRecord::INT;
         }
         else if (_type_tok.isTokenDesFloat())
         {
-            var_type = TypeRecord::FLOAT;
+            cur_expr_type = TypeRecord::FLOAT;
+            if (is_array)
+                var_type = TypeRecord::FLOAT_ARRAY;
+            else
+                var_type = TypeRecord::FLOAT;
         }
         else
         {
@@ -555,7 +657,6 @@ class Parser
                       << std::endl;
             exit(0);
         }
-        cur_expr_type = var_type;
 
 	if (auto iter = local_var_type_tracker.find(_tok.getLiteral());
                 iter != local_var_type_tracker.end())
@@ -690,6 +791,7 @@ class Parser
 
     std::unique_ptr<Statement> parseSetStatement();
 
+    std::unique_ptr<Expression> parseArrayExpr();
     std::unique_ptr<Expression> parseExpression();
     std::unique_ptr<Expression> parseTerm(
         std::unique_ptr<Expression> pending_left = nullptr);

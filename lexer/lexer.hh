@@ -40,13 +40,16 @@ struct Token
         TOKEN_RPAREN,
         TOKEN_LBRACE,
         TOKEN_RBRACE,
+        TOKEN_LBRACKET,
+        TOKEN_RBRACKET,
 
         // Keywords
         TOKEN_MAIN, // main entrance of the program
         TOKEN_DEF,
         TOKEN_RETURN,
         TOKEN_SET,
-		
+        TOKEN_ARRAY,
+
         // For function/argument type
         // DES - description
         TOKEN_DES_VOID,
@@ -94,6 +97,7 @@ struct Token
     bool isTokenDef() { return type == TokenType::TOKEN_DEF; }
     bool isTokenReturn() { return type == TokenType::TOKEN_RETURN; }
     bool isTokenSet() { return type == TokenType::TOKEN_SET; }
+    bool isTokenArray() { return type == TokenType::TOKEN_ARRAY; }
     bool isTokenDesVoid() { return type == TokenType::TOKEN_DES_VOID; }
     bool isTokenDesInt() { return type == TokenType::TOKEN_DES_INT; }
     bool isTokenDesFloat() { return type == TokenType::TOKEN_DES_FLOAT; }
@@ -115,8 +119,10 @@ struct Token
     bool isTokenSemicolon() { return type == TokenType::TOKEN_SEMICOLON; }
     bool isTokenLP() { return type == TokenType::TOKEN_LPAREN; }
     bool isTokenRP() { return type == TokenType::TOKEN_RPAREN; }
-    bool isTokenLB() { return type == TokenType::TOKEN_LBRACE; }
-    bool isTokenRB() { return type == TokenType::TOKEN_RBRACE; }
+    bool isTokenLBrace() { return type == TokenType::TOKEN_LBRACE; }
+    bool isTokenRBrace() { return type == TokenType::TOKEN_RBRACE; }
+    bool isTokenLBracket() { return type == TokenType::TOKEN_LBRACKET; }
+    bool isTokenRBracket() { return type == TokenType::TOKEN_RBRACKET; }
 
     bool isTokenLT() { return type == TokenType::TOKEN_LT; }
     bool isTokenGT() { return type == TokenType::TOKEN_GT; }

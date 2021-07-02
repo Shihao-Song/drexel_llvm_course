@@ -1,0 +1,18 @@
+def<int> addi(int x, int y)
+{
+    set<int> z = x + y;
+    return z;
+}
+
+def<float> addf(float x, float y)
+{
+    set<float> z = x + y;
+    return z;
+}
+
+main()
+{
+    set<int> num_ele = 4;
+    set<array<float>> x[num_ele - addi(1,2) + 3] = {-1.0, 2.0, -3.0 + 7.0, 4.0 + addf(1.0, 2.0)};
+    return 0;
+}

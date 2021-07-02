@@ -59,7 +59,7 @@ void Parser::parseProgram()
             assert(cur_token.isTokenRP());
 
             advanceTokens();
-            assert(cur_token.isTokenLB());
+            assert(cur_token.isTokenLBrace());
         }
         else if (cur_token.isTokenDef())
         {
@@ -115,7 +115,7 @@ void Parser::parseProgram()
             assert(cur_token.isTokenRP());
 
             advanceTokens();
-            assert(cur_token.isTokenLB());
+            assert(cur_token.isTokenLBrace());
 
             // record function def
             recordDefs(iden->getLiteral(), ret_type, args);
@@ -126,7 +126,7 @@ void Parser::parseProgram()
         }
 
         // parse the codes section
-        while (!cur_token.isTokenRB())
+        while (!cur_token.isTokenRBrace())
         {
             advanceTokens();
             if (cur_token.isTokenSet())
@@ -195,8 +195,23 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
     advanceTokens();
     assert(cur_token.isTokenLT());
 
+    // Extract var type
     advanceTokens();
     Token type_token = cur_token;
+    bool is_array = false;
+    if (cur_token.isTokenArray())
+    {
+        is_array = true;
+
+        advanceTokens();
+        assert(cur_token.isTokenLT());
+
+        advanceTokens();
+        type_token = cur_token;
+
+        advanceTokens();
+        assert(cur_token.isTokenGT());
+    }
 
     advanceTokens();
     assert(cur_token.isTokenGT());
@@ -206,20 +221,66 @@ std::unique_ptr<Statement> Parser::parseSetStatement()
     std::unique_ptr<Identifier> iden(new Identifier(cur_token));
 
     // (2) record variable type
-    recordLocalVars(cur_token, type_token);
-    
-    advanceTokens();
-    assert(cur_token.isTokenEqual());
+    recordLocalVars(cur_token, type_token, is_array);
 
     // (3) parse expression
-    advanceTokens();
-    auto expr = parseExpression();
+    std::unique_ptr<Expression> expr;
+    if (!is_array)
+    {
+        advanceTokens();
+        assert(cur_token.isTokenEqual());
+
+        advanceTokens();
+        expr = parseExpression();
+    }
+    else
+    {
+        expr = parseArrayExpr();
+    }
 
     // (4) prepare final statement
     std::unique_ptr<Statement> statement = 
         std::make_unique<SetStatement>(iden, expr);
 
     return statement;
+}
+
+std::unique_ptr<Expression> Parser::parseArrayExpr()
+{
+    advanceTokens();
+    assert(cur_token.isTokenLBracket());
+
+    advanceTokens();
+    // num_ele must be an integer
+    auto swap = cur_expr_type;
+    cur_expr_type = TypeRecord::INT;
+    auto num_ele = parseExpression();
+    cur_expr_type = swap;
+    assert(cur_token.isTokenRBracket());
+
+    advanceTokens();
+    assert(cur_token.isTokenEqual());
+
+    advanceTokens();
+    assert(cur_token.isTokenLBrace());
+
+    std::vector<std::shared_ptr<Expression>> eles;
+    advanceTokens();
+    assert(!cur_token.isTokenRBrace());
+
+    while (!cur_token.isTokenRBrace())
+    {
+        eles.push_back(parseExpression());
+        if (cur_token.isTokenComma())
+            advanceTokens();
+    }
+
+    advanceTokens();
+
+    std::unique_ptr<Expression> ret = 
+        make_unique<ArrayExpression>(num_ele, eles);
+
+    return ret;
 }
 
 std::unique_ptr<Expression> Parser::parseExpression()
