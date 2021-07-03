@@ -97,6 +97,7 @@ void Parser::parseProgram()
             assert(cur_token.isTokenLP());
 
             // extract arguments
+            // TODO, argument types need to support pointer
             while (!cur_token.isTokenRP())
             {
                 advanceTokens();
@@ -105,7 +106,8 @@ void Parser::parseProgram()
                 std::string arg_type = cur_token.getLiteral();
 
                 advanceTokens();
-                FuncStatement::Argument arg(arg_type, cur_token);
+                std::unique_ptr<Identifier> iden(new Identifier(cur_token));
+                FuncStatement::Argument arg(arg_type, iden);
                 args.push_back(arg);
 
                 recordLocalVars(arg);
@@ -318,23 +320,34 @@ std::unique_ptr<Expression> Parser::parseExpression()
                        expr_type);
                 continue;
             }
-
+            
             // Priority two. *, /
             // check if the next token is a function call
-	    std::unique_ptr<Expression> call_expr = nullptr;
+	    std::unique_ptr<Expression> pending_expr = nullptr;
             if (isFuncDef(cur_token.getLiteral()))
             {
                 strictTypeCheck(cur_token);
-                call_expr = parseCall();
-	    }
+                pending_expr = parseCall();
+            }
+
+            // check if the next token is an array index
+            // TODO - add deref in the future
+            if (bool is_index = (next_token.isTokenLBracket()) ?
+                                true : false;
+                is_index)
+            {
+                assert(pending_expr == nullptr);
+                strictTypeCheck(cur_token, is_index);
+                pending_expr = parseIndex();
+            }
 
             if (next_token.isTokenAsterisk() ||
                 next_token.isTokenSlash())
             {
-                if (call_expr != nullptr)
+                if (pending_expr != nullptr)
                 {
                     advanceTokens();
-                    right = parseTerm(std::move(call_expr));
+                    right = parseTerm(std::move(pending_expr));
                 }
                 else
                 {
@@ -343,9 +356,9 @@ std::unique_ptr<Expression> Parser::parseExpression()
             }
             else
             {
-                if (call_expr != nullptr)
+                if (pending_expr != nullptr)
                 {
-                    right = std::move(call_expr);
+                    right = std::move(pending_expr);
                 }
                 else
                 {
@@ -399,18 +412,26 @@ std::unique_ptr<Expression> Parser::parseTerm(
             }
             else
             {
-                strictTypeCheck(cur_token);
-                // check if it is a function call
-                if (isFuncDef(cur_token.getLiteral()))
+                // TODO - add deref in the future
+                bool is_index = (next_token.isTokenLBracket()) ?
+                                true : false;
+
+                strictTypeCheck(cur_token, is_index);
+    
+                if (is_index)
+                    right = parseIndex();
+                else if (isFuncDef(cur_token.getLiteral()))
                     right = parseCall();
                 else
                     right = std::make_unique<LiteralExpression>(cur_token);
+
                 advanceTokens();
             }
 
             left = std::make_unique<ArithExpression>(left, 
                        right, 
                        expr_type);
+
         }
         else
         {
@@ -436,20 +457,50 @@ std::unique_ptr<Expression> Parser::parseFactor()
         return left;
     }
 
-    strictTypeCheck(cur_token);
-    if (isFuncDef(cur_token.getLiteral()))
+    // TODO - add deref in the future
+    bool is_index = (next_token.isTokenLBracket()) ?
+                    true : false;
+
+    strictTypeCheck(cur_token, is_index);
+    
+    if (is_index)
+        left = parseIndex();
+    else if (isFuncDef(cur_token.getLiteral()))
         left = parseCall();
     else
         left = std::make_unique<LiteralExpression>(cur_token);
- 
+
     advanceTokens();
 
     return left;
 }
 
+std::unique_ptr<Expression> Parser::parseIndex()
+{
+    std::unique_ptr<Identifier> iden(new Identifier(cur_token));
+
+    advanceTokens();
+    assert(cur_token.isTokenLBracket());
+
+    advanceTokens();
+
+    // Index must be an integer
+    auto swap = cur_expr_type;
+    cur_expr_type = TypeRecord::INT;
+    auto idx = parseExpression();
+    cur_expr_type = swap;
+
+    std::unique_ptr<Expression> ret = 
+        std::make_unique<IndexExpression>(iden, idx);
+
+    assert(cur_token.isTokenRBracket());
+
+    return ret;
+}
+
 std::unique_ptr<Expression> Parser::parseCall()
 {
-    Token def_tok = cur_token;
+    std::unique_ptr<Identifier> def(new Identifier(cur_token));
 
     advanceTokens();
     assert(cur_token.isTokenLP());
@@ -457,7 +508,7 @@ std::unique_ptr<Expression> Parser::parseCall()
     advanceTokens();
     std::vector<std::shared_ptr<Expression>> args;
 
-    auto &arg_types = getFuncArgTypes(def_tok.getLiteral());
+    auto &arg_types = getFuncArgTypes(def->getLiteral());
     unsigned idx = 0;
     while (!cur_token.isTokenRP())
     {
@@ -475,7 +526,7 @@ std::unique_ptr<Expression> Parser::parseCall()
     }
 
     std::unique_ptr<CallExpression> ret = 
-        std::make_unique<CallExpression>(def_tok, args);
+        std::make_unique<CallExpression>(def, args);
 
     return ret;
 }

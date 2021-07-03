@@ -12,6 +12,20 @@ def<float> addf(float x, float y)
 main()
 {
     set<int> num_ele = 4;
-    set<array<float>> x[num_ele - addi(1,2) + 3] = {-1.0, 2.0, -3.0 + 7.0, 4.0 + addf(1.0, 2.0)};
+    set<int> y = 10;
+    set<array<int>> x[num_ele - addi(1,2) + 3] = {-1, 2, -3 + 7, 4 + addi(1, 2)};
+
+    set<int> z = x[0+1+2-2] + 1 * 2;
+
+    set<int> z = x[1] + y - 24 + 1 + 100;
+    set<int> z = x[2] + y * 25 * 74 / 124 + 25 + 68;
+    set<int> z = y * 25 * 74 / 124 + x[0];
+    set<int> z = (1 + (1 + 4) * 5 + (x[15-12] - 8) / x[0]) * 100;
+    set<int> z = x[3] * y * z * (1 + 2);
+    set<int> z = 7 + x[0] * (10 / (x[2*2-1] / (3 + 1) - 1));
+    set<int> z = (x[0] + 3) * 12  + (x[3] + 4) * 10 + 5;
+    set<int> z = 1 + 2 * (3 + 4) + 5;
+    set<int> z = 1 + 2 + 3 + 4 + 5;
+
     return 0;
 }

@@ -38,6 +38,7 @@ class Expression
     {
         LITERAL, // i.e., 1
         ARRAY,
+        INDEX,
 
         PLUS, // i.e., 1 + 2
         MINUS, // i.e., 1 - 2
@@ -50,7 +51,6 @@ class Expression
     };
 
   protected:
-
     ExpressionType type = ExpressionType::ILLEGAL;
     
   public:
@@ -75,21 +75,21 @@ class Expression
 class CallExpression : public Expression
 {
   protected:
-    Token def;
+    std::shared_ptr<Identifier> def;
     std::vector<std::shared_ptr<Expression>> args;
 
   public:
     CallExpression(const CallExpression &_expr) 
     {
-        def = _expr.def;
-        args = _expr.args;
+        def = std::move(_expr.def);
+        args = std::move(_expr.args);
         type = ExpressionType::CALL;
     }
 
-    CallExpression(Token &_tok, 
+    CallExpression(std::unique_ptr<Identifier> &_tok, 
         std::vector<std::shared_ptr<Expression>>_args) 
-        : def(_tok)
-        , args(_args)
+        : def(std::move(_tok))
+        , args(std::move(_args))
     {
         type = ExpressionType::CALL;
     }
@@ -100,7 +100,7 @@ class CallExpression : public Expression
         std::string prefix(level * 2, ' ');
 
         std::string ret = prefix + "{\n";
-        ret += (prefix + "  [CALL] " + def.getLiteral() + "\n");
+        ret += (prefix + "  [CALL] " + def->getLiteral() + "\n");
         unsigned idx = 0;
         for (auto &arg : args)
         {
@@ -116,7 +116,7 @@ class CallExpression : public Expression
         return ret;
     }
 
-    auto &getCallFunc() { return def.getLiteral(); }
+    auto &getCallFunc() { return def->getLiteral(); }
     auto &getArgs() { return args; }
 };
 
@@ -201,7 +201,48 @@ class ArrayExpression : public Expression
 
 };
 
-// TODO-Shihao IndexExpression
+class IndexExpression : public Expression
+{
+  protected:
+    std::shared_ptr<Identifier> iden;
+    std::shared_ptr<Expression> idx;
+
+  public:
+    IndexExpression(std::unique_ptr<Identifier> &_iden,
+                    std::unique_ptr<Expression> &_idx)
+    {
+        type = ExpressionType::INDEX;
+
+        iden = std::move(_iden);
+        idx = std::move(_idx);
+    }
+
+    IndexExpression(const IndexExpression& _expr)
+    {
+        type = ExpressionType::INDEX;
+
+        iden = std::move(_expr.iden);
+        idx = std::move(_expr.idx);
+    }
+    
+    std::string print(unsigned level) override
+    {
+        std::string prefix(level * 2, ' ');
+
+        std::string ret = prefix + "{\n";
+        ret += (prefix + "  [ARRAY] " + iden->getLiteral() + "\n");
+        ret += (prefix + "  [INDEX]\n");
+        ret += (prefix + "  {\n");
+        if (idx->isExprLiteral())
+            ret += (prefix + "      ");
+        ret += idx->print(level + 3);
+        ret += (prefix + "  }\n");
+	ret += (prefix + "}\n");
+        return ret;
+
+    }
+    
+};
 
 class ArithExpression : public Expression
 {
@@ -448,10 +489,10 @@ class FuncStatement : public Statement
 
       protected:
         ArgumentType type = ArgumentType::MAX;
-        Token tok;
+        std::shared_ptr<Identifier> iden;
 
       public:
-        Argument(std::string &_type, Token &_tok)
+        Argument(std::string &_type, std::unique_ptr<Identifier> &_iden)
         {
             if (_type == "int") type = ArgumentType::INT;
             else if (_type == "float") type = ArgumentType::FLOAT;
@@ -459,7 +500,13 @@ class FuncStatement : public Statement
 
             assert(type != ArgumentType::MAX);
 
-            tok = _tok;
+            iden = std::move(_iden);
+        }
+
+        Argument(const Argument &arg)
+        {
+            type = arg.type;
+            iden = std::move(arg.iden);
         }
 
         std::string print()
@@ -468,12 +515,12 @@ class FuncStatement : public Statement
             if (type == ArgumentType::INT) ret += "int : ";
             else if (type == ArgumentType::FLOAT) ret += "float : ";
 
-            ret += tok.getLiteral();
+            ret += iden->getLiteral();
 
             return ret;
         }
 
-        std::string &getLiteral() { return tok.getLiteral(); }
+        std::string &getLiteral() { return iden->getLiteral(); }
         bool isArgInt() { return type == ArgumentType::INT; }
         bool isArgFloat() { return type == ArgumentType::FLOAT; }
     };
@@ -692,7 +739,6 @@ class Parser
         
         func_def_tracker[_def] = record;
     }
-
     
     bool isFuncDef(std::string &_def)
     {
@@ -713,14 +759,36 @@ class Parser
     TypeRecord cur_expr_type;
     // strictTypeCheck v1 - check the token has the same type as the
     // cur_expr_type.
-    void strictTypeCheck(Token &_tok)
+    void strictTypeCheck(Token &_tok, bool is_index_or_deref = false)
     {
         TypeRecord tok_type = getTokenType(_tok);
-        assert(tok_type == cur_expr_type && 
-               "[Error] Inconsistent type within expression \
-               or undefined variable");
-    }
+        if (is_index_or_deref)
+        {
+            if ((cur_expr_type == TypeRecord::INT &&
+                 tok_type == TypeRecord::INT_ARRAY) ||
+                (cur_expr_type == TypeRecord::INT &&
+                 tok_type == TypeRecord::INT_PTR))
+            {
+                return;
+            }
+            else if ((cur_expr_type == TypeRecord::FLOAT &&
+                      tok_type == TypeRecord::FLOAT_ARRAY) ||
+                     (cur_expr_type == TypeRecord::FLOAT &&
+                      tok_type == TypeRecord::FLOAT_PTR))
+            {
+                return;
+            }
+        }
+        else
+	{
+            if (tok_type == cur_expr_type)
+                return;
+        }
 
+        std::cerr << "[Error] Token type of <" << _tok.getLiteral()
+                  << "> inconsistent within expression" << std::endl;
+        exit(0);
+    }
     TypeRecord getTokenType(Token &_tok)
     {
         TypeRecord tok_type;
@@ -768,6 +836,7 @@ class Parser
         std::unique_ptr<Expression> pending_left = nullptr);
     std::unique_ptr<Expression> parseFactor();
 
+    std::unique_ptr<Expression> parseIndex();
     std::unique_ptr<Expression> parseCall();
 
   protected:
