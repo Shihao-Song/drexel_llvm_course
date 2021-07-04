@@ -142,8 +142,7 @@ void Parser::parseProgram()
             else
             {
                 // is it a normal function call?
-                if (auto iter = func_def_tracker.find(cur_token.getLiteral());
-                        iter != func_def_tracker.end())
+                if (isFuncDef(cur_token.getLiteral()))
                 {
                     auto code = parseCall();
                     std::unique_ptr<CallStatement> call = 
