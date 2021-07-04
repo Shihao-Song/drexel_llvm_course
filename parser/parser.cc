@@ -141,6 +141,18 @@ void Parser::parseProgram()
             }
             else
             {
+                // is it a normal function call?
+                if (auto iter = func_def_tracker.find(cur_token.getLiteral());
+                        iter != func_def_tracker.end())
+                {
+                    auto code = parseCall();
+                    std::unique_ptr<CallStatement> call = 
+                        std::make_unique<CallStatement>(code, 
+                            Statement::StatementType::NORMAL_CALL_STATEMENT);
+
+                    codes.push_back(std::move(call));
+                }
+
                 // is it a variable-assignment?
                 if (isTokenTypeKeyword(cur_token) ||
                     cur_token.isTokenIden())
@@ -148,22 +160,7 @@ void Parser::parseProgram()
                     auto code = parseAssnStatement();
                     // code->printStatement();
                     codes.push_back(std::move(code));
-
-                    continue;
                 }
-
-                // is it a normal function call?
-                if (auto iter = func_def_tracker.find(cur_token.getLiteral());
-                        iter == func_def_tracker.end())
-                {
-                    continue;
-                }
-                auto code = parseCall();
-                std::unique_ptr<CallStatement> call = 
-                    std::make_unique<CallStatement>(code, 
-                        Statement::StatementType::NORMAL_CALL_STATEMENT);
-
-                codes.push_back(std::move(call));
             }
         }
 

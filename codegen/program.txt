@@ -10,26 +10,26 @@ def<int> addiTimesTwo(int x, int y)
 
 def<float> addf(float u, float v)
 {
-    set<float> w = u + v;
+    float w = u + v;
     return w; 
 }
 
 def<void> print()
 {
-    set<int> prin = 7 + 3 * (10 / (12 / addi(3, 1) - 1));
+    int prin = 7 + 3 * (10 / (12 / addi(3, 1) - 1));
     printVarInt(prin);
 }
 
-main()
+def<int> main()
 {
-    set<int> x = 10;
-    set<int> y = -20;
-    set<int> z = addi(x, y);
+    int x = 10;
+    int y = -20;
+    int z = addi(x, y);
     printVarInt(z);
     
-    set<float> a = 7.5;
-    set<float> b = -14.5;
-    set<float> c = addf(addf(a, b), -2.0 * (0.7 + 0.8));
+    float a = 7.5;
+    float b = -14.5;
+    float c = addf(addf(a, b), -2.0 * (0.7 + 0.8));
     printVarFloat(c);
 
     print();
