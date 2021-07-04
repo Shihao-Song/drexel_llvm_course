@@ -150,6 +150,8 @@ void Parser::parseProgram()
                             Statement::StatementType::NORMAL_CALL_STATEMENT);
 
                     codes.push_back(std::move(call));
+
+                    continue;
                 }
 
                 // is it a variable-assignment?
@@ -159,6 +161,8 @@ void Parser::parseProgram()
                     auto code = parseAssnStatement();
                     // code->printStatement();
                     codes.push_back(std::move(code));
+
+                    continue;
                 }
             }
         }

@@ -882,14 +882,6 @@ class Parser
 
     std::unordered_map<std::string,PerFuncRecord> per_func_var_tracking;
 
-    TypeRecord getInFuncVarType(std::string &func_name, 
-                                std::string &var_name)
-    {
-        auto iter = per_func_var_tracking.find(func_name);
-        assert(iter != per_func_var_tracking.end());
-
-        return iter->second.getVarType(var_name);
-    }
 
   public:
     auto& getFuncArgTypes(std::string &func_name)
@@ -907,8 +899,14 @@ class Parser
         return iter->second.ret_type;
     }
 
-    // TODO - get local var type directly
+    TypeRecord getInFuncVarType(std::string &func_name, 
+                                std::string &var_name)
+    {
+        auto iter = per_func_var_tracking.find(func_name);
+        assert(iter != per_func_var_tracking.end());
+
+        return iter->second.getVarType(var_name);
+    }
 };
 }
-
 #endif

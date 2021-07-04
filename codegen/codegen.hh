@@ -54,16 +54,22 @@ class Codegen
     std::unordered_map<std::string, Value *> local_var_tracking;
 
     void funcGen(Statement *);
-    void setGen(std::string &,Statement *);
+    void assnGen(std::string &,Statement *);
     void builtinGen(Statement *);
     void callGen(Statement *);
     void retGen(std::string &,Statement *);
 
-    Value* arithExprGen(std::string&, std::string&, ArithExpression*);
-    Value* arithExprGen(bool, ArithExpression*);
+    Value* allocaForLitIden(LiteralExpression*,
+                            std::string&,
+                            std::string&,
+                            Parser::TypeRecord&);
+    // Value* allocaForIdxIden(IndexExpression*);
+
+    Value* arithExprGen(std::string&,std::string&,ArithExpression*);
+    Value* arithExprGen(Parser::TypeRecord,ArithExpression*);
 
     Value* literalExprGen(std::string&, std::string&, LiteralExpression*);
-    Value* literalExprGen(bool, LiteralExpression*);
+    Value* literalExprGen(Parser::TypeRecord, LiteralExpression*);
 
     Value* callExprGen(CallExpression*);
 };
