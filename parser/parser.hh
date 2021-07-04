@@ -62,6 +62,7 @@ class Expression
 
     bool isExprLiteral() { return type == ExpressionType::LITERAL; }
     bool isExprArray() { return type == ExpressionType::ARRAY; }
+    bool isExprIndex() { return type == ExpressionType::INDEX; }
     bool isExprCall() { return type == ExpressionType::CALL; }
     bool isExprArith()
     {
@@ -352,7 +353,7 @@ class Statement
   public:
     enum class StatementType : int
     {
-        SET_STATEMENT,
+        ASSN_STATEMENT,
         FUNC_STATEMENT,
         RET_STATEMENT,
         BUILT_IN_CALL_STATEMENT,
@@ -369,7 +370,7 @@ class Statement
     virtual void printStatement() {}
 
     bool isStatementFunc() { return type == StatementType::FUNC_STATEMENT; }
-    bool isStatementSet() { return type == StatementType::SET_STATEMENT; }
+    bool isStatementAssn() { return type == StatementType::ASSN_STATEMENT; }
     bool isStatementRet() { return type == StatementType::RET_STATEMENT; }
     bool isStatementBuiltinCall() 
     {
@@ -437,31 +438,31 @@ class RetStatement : public Statement
     void printStatement() override;
 };
 
-class SetStatement : public Statement
+class AssnStatement : public Statement
 {
   protected:
     // using shared due to copy constructors
-    std::shared_ptr<Identifier> iden;
+    std::shared_ptr<Expression> iden;
     std::shared_ptr<Expression> expr;
 
   public:
-    SetStatement(std::unique_ptr<Identifier> &_iden,
+    AssnStatement(std::unique_ptr<Expression> &_iden,
                  std::unique_ptr<Expression> &_expr)
     {
-        type = StatementType::SET_STATEMENT;
+        type = StatementType::ASSN_STATEMENT;
 
         iden = std::move(_iden);
         expr = std::move(_expr);
     }
     
-    SetStatement(const SetStatement &_statement)
+    AssnStatement(const AssnStatement &_statement)
     {
         iden = std::move(_statement.iden);
         expr = std::move(_statement.expr);
         type = _statement.type;
     }
 
-    auto &getIden() { return iden->getLiteral(); }
+    auto getIden() { return iden.get(); }
     auto getExpr() { return expr.get(); }
 
     void printStatement() override;
@@ -618,6 +619,14 @@ class Parser
     };
 
   protected:
+    bool isTokenTypeKeyword(Token &_tok)
+    {
+        return (_tok.isTokenDesVoid() ||
+                _tok.isTokenDesInt() ||
+                _tok.isTokenDesFloat() || 
+                _tok.isTokenArray());
+    }
+
     // Track each local variable's type
     std::unordered_map<std::string,TypeRecord> local_var_type_tracker;
 
@@ -756,11 +765,13 @@ class Parser
 
     // We force all the elements inside an EXPRESSION with the
     // same type.
-    TypeRecord cur_expr_type;
+    TypeRecord cur_expr_type = TypeRecord::MAX;
     // strictTypeCheck v1 - check the token has the same type as the
     // cur_expr_type.
     void strictTypeCheck(Token &_tok, bool is_index_or_deref = false)
     {
+        if (cur_expr_type == TypeRecord::MAX) return;
+
         TypeRecord tok_type = getTokenType(_tok);
         if (is_index_or_deref)
         {
@@ -787,8 +798,10 @@ class Parser
 
         std::cerr << "[Error] Token type of <" << _tok.getLiteral()
                   << "> inconsistent within expression" << std::endl;
+        std::cerr << "[Line] " << cur_token.getLine() << "\n";
         exit(0);
     }
+
     TypeRecord getTokenType(Token &_tok)
     {
         TypeRecord tok_type;
@@ -828,7 +841,7 @@ class Parser
     void parseProgram();
     void advanceTokens();
 
-    std::unique_ptr<Statement> parseSetStatement();
+    std::unique_ptr<Statement> parseAssnStatement();
 
     std::unique_ptr<Expression> parseArrayExpr();
     std::unique_ptr<Expression> parseExpression();
@@ -879,18 +892,6 @@ class Parser
     }
 
   public:
-    bool isInFuncVarInt(std::string &func_name, std::string &var_name)
-    {
-        return getInFuncVarType(func_name, var_name) 
-                   == TypeRecord::INT;
-    }
-    
-    bool isInFuncVarFloat(std::string &func_name, std::string &var_name)
-    {
-         return getInFuncVarType(func_name, var_name) 
-                   == TypeRecord::FLOAT;
-    }
-
     auto& getFuncArgTypes(std::string &func_name)
     {
         auto iter = func_def_tracker.find(func_name);
@@ -906,6 +907,7 @@ class Parser
         return iter->second.ret_type;
     }
 
+    // TODO - get local var type directly
 };
 }
 

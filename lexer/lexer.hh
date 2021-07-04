@@ -2,6 +2,7 @@
 #define __LEXER_HH__
 
 #include <fstream>
+#include <memory>
 #include <queue>
 #include <sstream>
 #include <string>
@@ -44,10 +45,8 @@ struct Token
         TOKEN_RBRACKET,
 
         // Keywords
-        TOKEN_MAIN, // main entrance of the program
         TOKEN_DEF,
         TOKEN_RETURN,
-        TOKEN_SET,
         TOKEN_ARRAY,
 
         // For function/argument type
@@ -68,6 +67,7 @@ struct Token
     Token(const Token &_tok)
         : type(_tok.type)
         , literal(_tok.literal)
+        , line(_tok.line)
     {
     
     }
@@ -85,6 +85,16 @@ struct Token
     
     }
 
+    Token(TokenType _type, 
+          std::string &_val, 
+          std::shared_ptr<std::string> &_line)
+        : type(_type)
+        , literal(_val)
+        , line(_line)
+    {
+    
+    }
+
     std::string prinTokenType();
 
     auto &getLiteral() { return literal; }
@@ -93,10 +103,8 @@ struct Token
     bool isTokenIden() { return type == TokenType::TOKEN_IDENTIFIER; }
 
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
-    bool isTokenMain() { return type == TokenType::TOKEN_MAIN; }
     bool isTokenDef() { return type == TokenType::TOKEN_DEF; }
     bool isTokenReturn() { return type == TokenType::TOKEN_RETURN; }
-    bool isTokenSet() { return type == TokenType::TOKEN_SET; }
     bool isTokenArray() { return type == TokenType::TOKEN_ARRAY; }
     bool isTokenDesVoid() { return type == TokenType::TOKEN_DES_VOID; }
     bool isTokenDesInt() { return type == TokenType::TOKEN_DES_INT; }
@@ -135,6 +143,9 @@ struct Token
     {
         return type == TokenType::TOKEN_PRINT_VAR_FLOAT;
     }
+
+    std::shared_ptr<std::string> line;
+    std::string& getLine() { return *line; }
 };
 
 class Lexer
@@ -155,7 +166,7 @@ class Lexer
     ~Lexer() { code.close(); };
 
     bool getToken(Token&);
-
+    
   protected:
     void parseLine(std::string &line);
 

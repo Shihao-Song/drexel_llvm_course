@@ -44,100 +44,79 @@ void Parser::parseProgram()
         std::vector<FuncStatement::Argument> args;
         std::vector<std::shared_ptr<Statement>> codes;
 
-        if (cur_token.isTokenMain())
+        if (!cur_token.isTokenDef())
         {
-            // We assume main() always return int
-            ret_type = FuncStatement::RetType::INT;
+            std::cerr << "[Error] Don't support global variables or "
+                      << "class or structure yet.\n";
+            std::cerr << "[Line] " << cur_token.getLine() << "\n";
+            exit(0);
+	}
 
-            iden = std::make_unique<Identifier>(cur_token);
+        advanceTokens();
+        assert(cur_token.isTokenLT());
 
-            // We assume main() has no arguments
-            advanceTokens();
-            assert(cur_token.isTokenLP());
-
-            advanceTokens();
-            assert(cur_token.isTokenRP());
-
-            advanceTokens();
-            assert(cur_token.isTokenLBrace());
+        // determine return type
+        advanceTokens();
+        if (cur_token.isTokenDesVoid())
+        {
+	    ret_type = FuncStatement::RetType::VOID;
         }
-        else if (cur_token.isTokenDef())
+        else if (cur_token.isTokenDesInt())
         {
-            advanceTokens();
-            assert(cur_token.isTokenLT());
-
-            // determine return type
-            advanceTokens();
-            if (cur_token.isTokenDesVoid())
-            {
-                ret_type = FuncStatement::RetType::VOID;
-            }
-            else if (cur_token.isTokenDesInt())
-            {
-                ret_type = FuncStatement::RetType::INT;
-            }
-	    else if (cur_token.isTokenDesFloat())
-            {
-                ret_type = FuncStatement::RetType::FLOAT;
-            }
-            else
-            {
-                std::cerr << "[Error] parseProgram: unsupported return type\n";
-                exit(0);
-            }
-            
-            advanceTokens();
-            assert(cur_token.isTokenGT());
-
-            // function name
-            advanceTokens();
-            iden = std::make_unique<Identifier>(cur_token);
-
-            advanceTokens();
-            assert(cur_token.isTokenLP());
-
-            // extract arguments
-            // TODO, argument types need to support pointer
-            while (!cur_token.isTokenRP())
-            {
-                advanceTokens();
-                if (cur_token.isTokenRP()) break; // no args
-
-                std::string arg_type = cur_token.getLiteral();
-
-                advanceTokens();
-                std::unique_ptr<Identifier> iden(new Identifier(cur_token));
-                FuncStatement::Argument arg(arg_type, iden);
-                args.push_back(arg);
-
-                recordLocalVars(arg);
-
-                advanceTokens();
-            }
-            assert(cur_token.isTokenRP());
-
-            advanceTokens();
-            assert(cur_token.isTokenLBrace());
-
-            // record function def
-            recordDefs(iden->getLiteral(), ret_type, args);
+	    ret_type = FuncStatement::RetType::INT;
+        }
+        else if (cur_token.isTokenDesFloat())
+        {
+	    ret_type = FuncStatement::RetType::FLOAT;
         }
         else
         {
-            assert(false && "Don't support global var yet");
+	    std::cerr << "[Error] parseProgram: unsupported return type\n";
+            std::cerr << "[Line] " << cur_token.getLine() << "\n";
+	    exit(0);
         }
+    
+        advanceTokens();
+        assert(cur_token.isTokenGT());
+
+        // function name
+        advanceTokens();
+        iden = std::make_unique<Identifier>(cur_token);
+
+        advanceTokens();
+        assert(cur_token.isTokenLP());
+
+        // extract arguments
+        // TODO, argument types need to support pointer
+        while (!cur_token.isTokenRP())
+        {
+            advanceTokens();
+            if (cur_token.isTokenRP()) break; // no args
+
+            std::string arg_type = cur_token.getLiteral();
+
+            advanceTokens();
+            std::unique_ptr<Identifier> iden(new Identifier(cur_token));
+            FuncStatement::Argument arg(arg_type, iden);
+            args.push_back(arg);
+
+            recordLocalVars(arg);
+
+            advanceTokens();
+        }
+        assert(cur_token.isTokenRP());
+
+        advanceTokens();
+        assert(cur_token.isTokenLBrace());
+
+        // record function def
+        recordDefs(iden->getLiteral(), ret_type, args);
 
         // parse the codes section
         while (!cur_token.isTokenRBrace())
         {
             advanceTokens();
-            if (cur_token.isTokenSet())
-            {
-                auto code = parseSetStatement();
-                // code->printStatement();
-                codes.push_back(std::move(code));
-            }
-            else if (cur_token.isTokenPrintVarInt() || 
+            if (cur_token.isTokenPrintVarInt() || 
                      cur_token.isTokenPrintVarFloat())
             {
                 auto code = parseCall();
@@ -151,10 +130,7 @@ void Parser::parseProgram()
             {
                 advanceTokens();
 
-                if (iden->getLiteral() == "main")
-                    cur_expr_type = TypeRecord::INT;
-                else
-                    cur_expr_type = getFuncRetType(iden->getLiteral());
+                cur_expr_type = getFuncRetType(iden->getLiteral());
 
                 auto ret = parseExpression();
 
@@ -165,7 +141,18 @@ void Parser::parseProgram()
             }
             else
             {
-                // Should be a normal function call
+                // is it a variable-assignment?
+                if (isTokenTypeKeyword(cur_token) ||
+                    cur_token.isTokenIden())
+                {
+                    auto code = parseAssnStatement();
+                    // code->printStatement();
+                    codes.push_back(std::move(code));
+
+                    continue;
+                }
+
+                // is it a normal function call?
                 if (auto iter = func_def_tracker.find(cur_token.getLiteral());
                         iter == func_def_tracker.end())
                 {
@@ -195,59 +182,98 @@ void Parser::parseProgram()
     }
 }
 
-std::unique_ptr<Statement> Parser::parseSetStatement()
+std::unique_ptr<Statement> Parser::parseAssnStatement()
 {
-    advanceTokens();
-    assert(cur_token.isTokenLT());
-
-    // Extract var type
-    advanceTokens();
-    Token type_token = cur_token;
-    bool is_array = false;
-    if (cur_token.isTokenArray())
+    if (isTokenTypeKeyword(cur_token))
     {
-        is_array = true;
+        Token type_token = cur_token;
+        bool is_array = false;
+        if (cur_token.isTokenArray())
+        {
+            is_array = true;
+
+            advanceTokens();
+            assert(cur_token.isTokenLT());
+
+            advanceTokens();
+            type_token = cur_token;
+
+            advanceTokens();
+            assert(cur_token.isTokenGT());
+        }
 
         advanceTokens();
-        assert(cur_token.isTokenLT());
+        if (auto var_iter = local_var_type_tracker.find(cur_token.getLiteral());
+                var_iter != local_var_type_tracker.end())
+        {
+            std::cerr << "[Error] Re-definition of "
+                      << cur_token.getLiteral() << "\n";
+            std::cerr << "[Line] " << cur_token.getLine() << "\n";
+            exit(0);
+        }
 
-        advanceTokens();
-        type_token = cur_token;
+        recordLocalVars(cur_token, type_token, is_array);
 
-        advanceTokens();
-        assert(cur_token.isTokenGT());
-    }
+        std::unique_ptr<Expression> iden =
+            std::make_unique<LiteralExpression>(cur_token);
 
-    advanceTokens();
-    assert(cur_token.isTokenGT());
+	std::unique_ptr<Expression> expr;
+        if (!is_array)
+        {
+            advanceTokens();
+            assert(cur_token.isTokenEqual());
 
-    // (1) parse identifier
-    advanceTokens();
-    std::unique_ptr<Identifier> iden(new Identifier(cur_token));
+            advanceTokens();
+            expr = parseExpression();
+        }
+        else
+        {
+            expr = parseArrayExpr();
+        }
+	
+        std::unique_ptr<Statement> statement = 
+            std::make_unique<AssnStatement>(iden, expr);
 
-    // (2) record variable type
-    recordLocalVars(cur_token, type_token, is_array);
-
-    // (3) parse expression
-    std::unique_ptr<Expression> expr;
-    if (!is_array)
-    {
-        advanceTokens();
-        assert(cur_token.isTokenEqual());
-
-        advanceTokens();
-        expr = parseExpression();
+        return statement;
     }
     else
     {
-        expr = parseArrayExpr();
+        auto var_iter = local_var_type_tracker.find(cur_token.getLiteral());
+        if (var_iter == local_var_type_tracker.end())
+        {
+            std::cerr << "[Error] Undefined variable of "
+                      << cur_token.getLiteral() << "\n";
+            std::cerr << "[Line] " << cur_token.getLine() << "\n";
+            exit(0);
+        }
+
+        cur_expr_type = TypeRecord::MAX;
+        auto iden = parseExpression();
+
+        assert(cur_token.isTokenEqual());
+        advanceTokens();
+
+	std::unique_ptr<Expression> expr;
+        if (var_iter->second == TypeRecord::INT_ARRAY || 
+            var_iter->second == TypeRecord::FLOAT_ARRAY)
+        {
+            cur_expr_type = (var_iter->second == TypeRecord::INT_ARRAY)
+                            ? TypeRecord::INT
+                            : TypeRecord::FLOAT;
+            
+	}
+        else
+        {
+            cur_expr_type = var_iter->second;
+        }
+
+        expr = parseExpression();
+        
+        std::unique_ptr<Statement> statement = 
+            std::make_unique<AssnStatement>(iden, expr);
+
+        return statement;
     }
-
-    // (4) prepare final statement
-    std::unique_ptr<Statement> statement = 
-        std::make_unique<SetStatement>(iden, expr);
-
-    return statement;
 }
 
 std::unique_ptr<Expression> Parser::parseArrayExpr()
@@ -261,6 +287,30 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
     cur_expr_type = TypeRecord::INT;
     auto num_ele = parseExpression();
     cur_expr_type = swap;
+    if (!(num_ele->isExprLiteral()))
+    {
+        std::cerr << "[Error] Number of array elements "
+                  << "must be a single integer. \n"
+                  << "[Line] " << cur_token.getLine() << "\n";
+        exit(0);
+    }
+    auto num_ele_lit = static_cast<LiteralExpression*>(num_ele.get());
+    if (!(num_ele_lit->isLiteralInt()))
+    {
+        std::cerr << "[Error] Number of array elements "
+                  << "must be a single integer. \n"
+                  << "[Line] " << cur_token.getLine() << "\n";
+        exit(0);
+    }
+    int num_eles_int = stoi(num_ele_lit->getLiteral());
+    if (num_eles_int <= 1)
+    {
+        std::cerr << "[Error] Number of array elements "
+                  << "must be larger than 1. \n"
+                  << "[Line] " << cur_token.getLine() << "\n";
+        exit(0);
+    }
+
     assert(cur_token.isTokenRBracket());
 
     advanceTokens();
@@ -270,17 +320,34 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
     assert(cur_token.isTokenLBrace());
 
     std::vector<std::shared_ptr<Expression>> eles;
-    advanceTokens();
-    assert(!cur_token.isTokenRBrace());
-
-    while (!cur_token.isTokenRBrace())
+    if (!next_token.isTokenRBrace())
     {
-        eles.push_back(parseExpression());
-        if (cur_token.isTokenComma())
-            advanceTokens();
+        advanceTokens();
+        while (!cur_token.isTokenRBrace())
+        {
+            eles.push_back(parseExpression());
+            if (cur_token.isTokenComma())
+                advanceTokens();
+        }
+
+        // We make sure consistent number of elements
+        if (num_eles_int != eles.size())
+        {
+            std::cerr << "[Error] Accpeted format: "
+                      << "(1) pre-allocation style - array<int> x[10] = {} "
+                      << "(2) #initials == #elements - "
+                      << "array<int> x[2] = {1, 2} \n"
+                      << "[Line] " << cur_token.getLine() << "\n";
+            exit(0);
+        }
+    }
+    else
+    {
+        advanceTokens();
     }
 
     advanceTokens();
+    std::cout << cur_token.getLiteral() << "\n";
 
     std::unique_ptr<Expression> ret = 
         make_unique<ArrayExpression>(num_ele, eles);
@@ -546,10 +613,18 @@ void RetStatement::printStatement()
     std::cout << "    }\n";
 }
 
-void SetStatement::printStatement()
+void AssnStatement::printStatement()
 {
     std::cout << "    {\n";
-    std::cout << "      " + iden->print() << "\n";
+    if (iden->getType() == Expression::ExpressionType::LITERAL)
+    {
+        std::cout << "      " << iden->print(4);
+    }
+    else
+    {
+        std::cout << iden->print(4);
+    }
+
     std::cout << "      =\n";
     if (expr->getType() == Expression::ExpressionType::LITERAL)
     {
