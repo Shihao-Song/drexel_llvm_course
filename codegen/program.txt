@@ -1,8 +1,8 @@
 def<int> main()
 {
-    array<int> x[4] = {-1, 2, -3 + 7, 7};
-    int z = (1 + (1 + 4) * 5 + (x[3] - 8) / x[0]) * 100;
-    printVarInt(z);
+    array<int> x[4] = {-1, -2, -3, -4};
+    int sum = x[0] + x[1] + x[2] + x[3];
+    printVarInt(sum);
 
     return 0;
 }

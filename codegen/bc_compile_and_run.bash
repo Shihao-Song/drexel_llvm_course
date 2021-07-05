@@ -8,5 +8,3 @@ llvm-dis $BT -o $LL
 llvm-link $BT util/print.bc -o $LBT
 llc -filetype=obj $LBT -o $O
 clang $O -o $TARGET
-
-./$TARGET
