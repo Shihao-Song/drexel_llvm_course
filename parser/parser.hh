@@ -629,8 +629,7 @@ class Parser
     {
         return (_tok.isTokenDesVoid() ||
                 _tok.isTokenDesInt() ||
-                _tok.isTokenDesFloat() || 
-                _tok.isTokenArray());
+                _tok.isTokenDesFloat()); 
     }
 
     // Track each local variable's type

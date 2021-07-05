@@ -187,20 +187,6 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
     if (isTokenTypeKeyword(cur_token))
     {
         Token type_token = cur_token;
-        bool is_array = false;
-        if (cur_token.isTokenArray())
-        {
-            is_array = true;
-
-            advanceTokens();
-            assert(cur_token.isTokenLT());
-
-            advanceTokens();
-            type_token = cur_token;
-
-            advanceTokens();
-            assert(cur_token.isTokenGT());
-        }
 
         advanceTokens();
         if (auto var_iter = local_var_type_tracker.find(cur_token.getLiteral());
@@ -211,6 +197,9 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
             std::cerr << "[Line] " << cur_token.getLine() << "\n";
             exit(0);
         }
+
+        bool is_array = (next_token.isTokenLBracket()) ? 
+                        true : false;
 
         recordLocalVars(cur_token, type_token, is_array);
 

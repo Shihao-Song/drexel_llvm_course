@@ -55,8 +55,6 @@ std::string Token::prinTokenType()
             return std::string("DEF");
         case TokenType::TOKEN_RETURN:
             return std::string("RETURN");
-        case TokenType::TOKEN_ARRAY:
-            return std::string("ARRAY");
         case TokenType::TOKEN_DES_VOID:
             return std::string("DES-VOID");
         case TokenType::TOKEN_DES_INT:
@@ -100,7 +98,6 @@ Lexer::Lexer(const char* fn)
     // fill pre-defined keywords
     keywords.insert({"def", Token::TokenType::TOKEN_DEF});
     keywords.insert({"return", Token::TokenType::TOKEN_RETURN});
-    keywords.insert({"array", Token::TokenType::TOKEN_ARRAY});
 
     keywords.insert({"void", Token::TokenType::TOKEN_DES_VOID});
     keywords.insert({"int", Token::TokenType::TOKEN_DES_INT});

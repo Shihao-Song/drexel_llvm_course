@@ -47,7 +47,6 @@ struct Token
         // Keywords
         TOKEN_DEF,
         TOKEN_RETURN,
-        TOKEN_ARRAY,
 
         // For function/argument type
         // DES - description
@@ -105,7 +104,6 @@ struct Token
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
     bool isTokenDef() { return type == TokenType::TOKEN_DEF; }
     bool isTokenReturn() { return type == TokenType::TOKEN_RETURN; }
-    bool isTokenArray() { return type == TokenType::TOKEN_ARRAY; }
     bool isTokenDesVoid() { return type == TokenType::TOKEN_DES_VOID; }
     bool isTokenDesInt() { return type == TokenType::TOKEN_DES_INT; }
     bool isTokenDesFloat() { return type == TokenType::TOKEN_DES_FLOAT; }
