@@ -59,16 +59,19 @@ class Codegen
     void callGen(Statement *);
     void retGen(std::string &,Statement *);
 
-    Value* allocaForLitIden(LiteralExpression*,
+    Value* allocaForLitIden(std::string&,
                             std::string&,
-                            std::string&,
-                            Parser::TypeRecord&);
+                            Parser::TypeRecord&,
+                            LiteralExpression*,
+                            ArrayExpression*);
     // Value* allocaForIdxIden(IndexExpression*);
+    
+    void arrayExprGen(Parser::TypeRecord,
+                      Value*,
+                      ArrayExpression*);
 
-    Value* arithExprGen(std::string&,std::string&,ArithExpression*);
     Value* arithExprGen(Parser::TypeRecord,ArithExpression*);
 
-    Value* literalExprGen(std::string&, std::string&, LiteralExpression*);
     Value* literalExprGen(Parser::TypeRecord, LiteralExpression*);
 
     Value* callExprGen(CallExpression*);

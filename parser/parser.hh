@@ -171,7 +171,10 @@ class ArrayExpression : public Expression
         eles = std::move(_expr.eles);
         type = _expr.type;
     }
-    
+   
+    auto getNumElements() { return num_ele.get(); }
+    auto &getElements() { return eles; }
+
     std::string print(unsigned level) override
     {
         std::string prefix(level * 2, ' ');
@@ -433,7 +436,7 @@ class RetStatement : public Statement
         ret = std::move(_statement.ret);
     }
 
-    auto &getRetVal() { return ret; }
+    auto getRetVal() { return ret.get(); }
 
     void printStatement() override;
 };

@@ -347,7 +347,6 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
     }
 
     advanceTokens();
-    std::cout << cur_token.getLiteral() << "\n";
 
     std::unique_ptr<Expression> ret = 
         make_unique<ArrayExpression>(num_ele, eles);
