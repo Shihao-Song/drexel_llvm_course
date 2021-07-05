@@ -169,30 +169,16 @@ void Codegen::assnGen(std::string &cur_func_name,
     }
     
     Value *val = nullptr;
-    if (expr->isExprLiteral())
-    {
-        LiteralExpression* lit = static_cast<LiteralExpression*>(expr);
-
-        val = literalExprGen(var_type, lit);
-    }
-    else if (expr->isExprArray())
+    if (expr->isExprArray())
     {
         ArrayExpression* array_info = static_cast<ArrayExpression*>(expr);
         arrayExprGen(var_type, reg, array_info);
     }
-    else if (expr->isExprArith())
+    else
     {
-        ArithExpression *arith = static_cast<ArithExpression *>(expr);
-
-        val = arithExprGen(var_type, arith);        
+        val = exprGen(var_type, expr);
     }
-    else if (expr->isExprCall())
-    {
-        CallExpression *call = static_cast<CallExpression*>(expr);
-
-        val = callExprGen(call);
-    }
-   
+    
     if (val != nullptr) 
         builder->CreateStore(val, reg);
     local_var_tracking[var_name] = reg;
@@ -289,39 +275,9 @@ void Codegen::builtinGen(Statement *_statement)
 
     Parser::TypeRecord var_type = (func_name == "printVarInt") ? 
         Parser::TypeRecord::INT : Parser::TypeRecord::FLOAT;
-    Value *val;
-    if (expr->isExprLiteral())
-    {
-        LiteralExpression *lit = 
-            static_cast<LiteralExpression*>(expr);
 
-        val = literalExprGen(var_type, lit);
-    }
-    else if (expr->isExprArith())
-    {
-        ArithExpression *arith = 
-            static_cast<ArithExpression*>(expr);
-
-        val = arithExprGen(var_type, arith);
-    }
-    else if (expr->isExprCall())
-    {
-        CallExpression *call = 
-            static_cast<CallExpression*>(expr);
-
-        val = callExprGen(call);
-    }
-    else if (expr->isExprIndex())
-    {
-        std::vector<Value *> index;
-        index.push_back(ConstantInt::get(*context, APInt(32, 0)));
-        index.push_back(ConstantInt::get(*context, APInt(32, 1)));
-        auto base = builder->CreateInBoundsGEP(local_var_tracking.find("x")->second,
-                                               index);
-
-        val = builder->CreateLoad(Type::getInt32Ty(*context), base);
-    }
-
+    Value *val = exprGen(var_type, expr);
+    
     if (func_name == "printVarInt")
     {
         builder->CreateCall(printVarInt, val);
@@ -330,6 +286,44 @@ void Codegen::builtinGen(Statement *_statement)
     {
         builder->CreateCall(printVarFloat, val);
     }
+}
+
+Value* Codegen::exprGen(Parser::TypeRecord _var_type, Expression *expr)
+{
+    Parser::TypeRecord var_type = _var_type;
+    if (_var_type == Parser::TypeRecord::INT_ARRAY)
+        var_type = Parser::TypeRecord::INT;
+    else if (_var_type == Parser::TypeRecord::FLOAT_ARRAY)
+        var_type = Parser::TypeRecord::FLOAT;
+
+    Value *val = nullptr;
+    if (expr->isExprLiteral())
+    {
+        LiteralExpression* lit = static_cast<LiteralExpression*>(expr);
+
+        val = literalExprGen(var_type, lit);
+    }
+    else if (expr->isExprArith())
+    {
+        ArithExpression *arith = static_cast<ArithExpression *>(expr);
+
+        val = arithExprGen(var_type, arith);        
+    }
+    else if (expr->isExprIndex())
+    {
+        IndexExpression *index = static_cast<IndexExpression*>(expr);
+
+        val = indexExprGen(var_type, index);
+    }
+    else if (expr->isExprCall())
+    {
+        CallExpression *call = static_cast<CallExpression*>(expr);
+
+        val = callExprGen(call);
+    }
+
+    assert(val != nullptr);
+    return val;
 }
 
 void Codegen::callGen(Statement *_statement)
@@ -352,29 +346,7 @@ void Codegen::retGen(std::string &cur_func_name,
 
     Parser::TypeRecord ret_type = parser->getFuncRetType(cur_func_name);
 
-    Value *val;
-    if (expr->isExprLiteral())
-    {
-        LiteralExpression *lit = 
-            static_cast<LiteralExpression*>(expr);
-
-        val = literalExprGen(ret_type, lit);
-    }
-    else if (expr->isExprArith())
-    {
-        ArithExpression *arith = 
-            static_cast<ArithExpression*>(expr);
-
-        val = arithExprGen(ret_type, arith);
-    }
-    else if (expr->isExprCall())
-    {
-        CallExpression *call = 
-            static_cast<CallExpression*>(expr);
-
-        val = callExprGen(call);
-    }
-
+    Value *val = exprGen(ret_type, expr);
     builder->CreateRet(val);
 }
 
@@ -405,29 +377,7 @@ void Codegen::arrayExprGen(Parser::TypeRecord array_type,
     auto const_one = ConstantInt::get(*context, APInt(32, 1));
     for (auto ele : array_info->getElements())
     {
-        Value *val;
-        if (ele->isExprLiteral())
-        {
-            LiteralExpression *lit = 
-                static_cast<LiteralExpression*>(ele.get());
-
-            val = literalExprGen(type, lit);
-        }
-        else if (ele->isExprArith())
-        {
-            ArithExpression *arith = 
-                static_cast<ArithExpression*>(ele.get());
-
-            val = arithExprGen(type, arith);
-        }
-        else if (ele->isExprCall())
-        {
-            CallExpression *call = 
-                static_cast<CallExpression*>(ele.get());
-
-            val = callExprGen(call);
-        }
-
+        Value *val = exprGen(type, ele.get());
         builder->CreateStore(val, base);
         if (++cnt <= last_ele_idx)
         {
@@ -473,24 +423,11 @@ Value* Codegen::arithExprGen(Parser::TypeRecord type,
     {
         Expression *left_expr = arith->getLeft();
 
-        // The left_expr must either be literal or call
         assert((left_expr->isExprLiteral() || 
-                left_expr->isExprCall() ));
+                left_expr->isExprCall() || 
+                left_expr->isExprIndex()));
 
-        if (left_expr->isExprLiteral())
-        {
-            LiteralExpression* lit = 
-                static_cast<LiteralExpression*>(left_expr);
-
-            val_left = literalExprGen(type, lit);
-        }
-        else if (left_expr->isExprCall())
-        {
-            CallExpression* call = 
-                static_cast<CallExpression*>(left_expr);
-
-            val_left = callExprGen(call);
-	}
+        val_left = exprGen(type, left_expr);
     }
 
     if (val_right == nullptr)
@@ -499,22 +436,10 @@ Value* Codegen::arithExprGen(Parser::TypeRecord type,
 
         // The right_expr must either be literal or call
 	assert((right_expr->isExprLiteral() || 
-                right_expr->isExprCall() ));
+                right_expr->isExprCall() ||
+                right_expr->isExprIndex()));
 
-        if (right_expr->isExprLiteral())
-        {
-            LiteralExpression* lit = 
-                static_cast<LiteralExpression*>(right_expr);
-
-            val_right = literalExprGen(type, lit);
-        }
-        else if (right_expr->isExprCall())
-        {
-            CallExpression* call = 
-                static_cast<CallExpression*>(right_expr);
-
-            val_right = callExprGen(call);
-	}
+        val_right = exprGen(type, right_expr);
     }
 
     assert(val_left != nullptr);
@@ -588,6 +513,28 @@ Value* Codegen::literalExprGen(Parser::TypeRecord type,
     return val;
 }
 
+Value* Codegen::indexExprGen(Parser::TypeRecord type, 
+                             IndexExpression* index)
+{
+    auto arr = local_var_tracking.find(index->getIden());
+    assert(arr != local_var_tracking.end());
+
+    Value *idx = exprGen(Parser::TypeRecord::INT, index->getIndex());
+
+    std::vector<Value*> idxs;
+    idxs.push_back(ConstantInt::get(*context, APInt(32, 0)));
+    idxs.push_back(idx);
+    auto base = builder->CreateInBoundsGEP(arr->second, idxs);
+
+    Value *val;
+    if (type == Parser::TypeRecord::INT)
+        val = builder->CreateLoad(Type::getInt32Ty(*context), base);
+    else if (type == Parser::TypeRecord::FLOAT)
+        val = builder->CreateLoad(Type::getFloatTy(*context), base);
+
+    return val;
+}
+
 Value* Codegen::callExprGen(CallExpression *call)
 {
     auto &def = call->getCallFunc();
@@ -608,29 +555,7 @@ Value* Codegen::callExprGen(CallExpression *call)
     {
         auto expr = args[i].get();
 
-        Value *val;
-        if (expr->isExprLiteral())
-        {
-            LiteralExpression *lit = 
-                static_cast<LiteralExpression*>(expr);
-
-            val = literalExprGen(arg_types[i], lit);
-        }
-        else if (expr->isExprArith())
-        {
-            ArithExpression *arith = 
-                static_cast<ArithExpression*>(expr);
-
-            val = arithExprGen(arg_types[i], arith);
-        }
-        else if (expr->isExprCall())
-        {
-            CallExpression *call = 
-                static_cast<CallExpression*>(expr);
-
-            val = callExprGen(call);
-        }
-  
+        Value *val = exprGen(arg_types[i], expr);
         call_func_args.push_back(val);
     }
 

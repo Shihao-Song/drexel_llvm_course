@@ -65,7 +65,9 @@ class Codegen
                             LiteralExpression*,
                             ArrayExpression*);
     // Value* allocaForIdxIden(IndexExpression*);
-    
+   
+    Value* exprGen(Parser::TypeRecord,Expression*);
+
     void arrayExprGen(Parser::TypeRecord,
                       Value*,
                       ArrayExpression*);
@@ -73,6 +75,8 @@ class Codegen
     Value* arithExprGen(Parser::TypeRecord,ArithExpression*);
 
     Value* literalExprGen(Parser::TypeRecord, LiteralExpression*);
+
+    Value* indexExprGen(Parser::TypeRecord, IndexExpression*);
 
     Value* callExprGen(CallExpression*);
 };

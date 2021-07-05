@@ -221,6 +221,9 @@ class IndexExpression : public Expression
         idx = std::move(_idx);
     }
 
+    auto &getIden() { return iden->getLiteral(); }
+    auto getIndex() { return idx.get(); }
+
     IndexExpression(const IndexExpression& _expr)
     {
         type = ExpressionType::INDEX;

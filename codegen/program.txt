@@ -1,40 +1,8 @@
-def<int> addi(int x, int y)
-{
-    return x + y;
-}
-
-def<int> addiTimesTwo(int x, int y)
-{
-    return addi(x,y) * 2;
-}
-
-def<float> addf(float u, float v)
-{
-    float w = u + v;
-    return w; 
-}
-
-def<void> print()
-{
-    int prin = 7 + 3 * (10 / (12 / addi(3, 1) - 1));
-    printVarInt(prin);
-}
-
 def<int> main()
 {
-    int x = 10;
-    int y = -20;
-    int z = addi(x, y);
+    array<int> x[4] = {-1, 2, -3 + 7, 7};
+    int z = (1 + (1 + 4) * 5 + (x[3] - 8) / x[0]) * 100;
     printVarInt(z);
-    
-    float a = 7.5;
-    float b = -14.5;
-    float c = addf(addf(a, b), -2.0 * (0.7 + 0.8));
-    printVarFloat(c);
-
-    print();
-
-    printVarInt(addiTimesTwo(2, 3));
 
     return 0;
 }
