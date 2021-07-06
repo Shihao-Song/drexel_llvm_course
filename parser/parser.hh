@@ -722,7 +722,15 @@ class Parser
         TypeRecord ret_type;
         std::vector<TypeRecord> arg_types;
 
+        bool is_built_in = false;
+
         FuncRecord() {}
+
+        FuncRecord(const FuncRecord& _record)
+            : ret_type(_record.ret_type)
+            , arg_types(_record.arg_types)
+            , is_built_in(_record.is_built_in)
+        {}
     };
     std::unordered_map<std::string,FuncRecord> func_def_tracker;
     void recordDefs(std::string &_def,
@@ -754,16 +762,16 @@ class Parser
         func_def_tracker[_def] = record;
     }
     
-    bool isFuncDef(std::string &_def)
+    std::pair<bool,bool> isFuncDef(std::string &_def)
     {
         if (auto iter = func_def_tracker.find(_def);
                 iter != func_def_tracker.end())
         {
-            return true;
+            return std::make_pair(true, iter->second.is_built_in);
         }
         else
         {
-            return false;
+            return std::make_pair(false,false);
         }
     }
     /***************** Section two - strict type checking ******************/

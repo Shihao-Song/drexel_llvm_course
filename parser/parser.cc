@@ -17,6 +17,7 @@ Parser::Parser(const char* fn) : lexer(new Lexer(fn))
     arg_types.push_back(TypeRecord::INT);
     record.ret_type = ret_type;
     record.arg_types = arg_types;
+    record.is_built_in = true;
     func_def_tracker.insert({"printVarInt", record});
 
     // printVarFloat
@@ -24,6 +25,7 @@ Parser::Parser(const char* fn) : lexer(new Lexer(fn))
     arg_types.push_back(TypeRecord::FLOAT);
     record.ret_type = ret_type;
     record.arg_types = arg_types;
+    record.is_built_in = true;
     func_def_tracker.insert({"printVarFloat", record});
 
     parseProgram();
@@ -110,17 +112,7 @@ void Parser::parseProgram()
         while (!cur_token.isTokenRBrace())
         {
             advanceTokens();
-            if (cur_token.isTokenPrintVarInt() || 
-                     cur_token.isTokenPrintVarFloat())
-            {
-                auto code = parseCall();
-                std::unique_ptr<CallStatement> built_in = 
-                    std::make_unique<CallStatement>(code, 
-                        Statement::StatementType::BUILT_IN_CALL_STATEMENT);
-                // built_in->printStatement();
-                codes.push_back(std::move(built_in));
-            }
-            else if (cur_token.isTokenReturn())
+            if (cur_token.isTokenReturn())
             {
                 advanceTokens();
 
@@ -136,12 +128,17 @@ void Parser::parseProgram()
             else
             {
                 // is it a normal function call?
-                if (isFuncDef(cur_token.getLiteral()))
+                if (auto [is_def, is_built_in] = 
+                        isFuncDef(cur_token.getLiteral());
+                    is_def)
                 {
+                    Statement::StatementType call_type = is_built_in ?
+                        Statement::StatementType::BUILT_IN_CALL_STATEMENT :
+                        Statement::StatementType::NORMAL_CALL_STATEMENT;
+
                     auto code = parseCall();
                     std::unique_ptr<CallStatement> call = 
-                        std::make_unique<CallStatement>(code, 
-                            Statement::StatementType::NORMAL_CALL_STATEMENT);
+                        std::make_unique<CallStatement>(code, call_type); 
 
                     codes.push_back(std::move(call));
 
@@ -373,7 +370,9 @@ std::unique_ptr<Expression> Parser::parseExpression()
             // Priority two. *, /
             // check if the next token is a function call
 	    std::unique_ptr<Expression> pending_expr = nullptr;
-            if (isFuncDef(cur_token.getLiteral()))
+            if (auto [is_def, is_built_in] = 
+                    isFuncDef(cur_token.getLiteral());
+                    is_def)
             {
                 strictTypeCheck(cur_token);
                 pending_expr = parseCall();
@@ -469,7 +468,9 @@ std::unique_ptr<Expression> Parser::parseTerm(
     
                 if (is_index)
                     right = parseIndex();
-                else if (isFuncDef(cur_token.getLiteral()))
+                else if (auto [is_def, is_built_in] = 
+                            isFuncDef(cur_token.getLiteral());
+                            is_def)
                     right = parseCall();
                 else
                     right = std::make_unique<LiteralExpression>(cur_token);
@@ -514,7 +515,9 @@ std::unique_ptr<Expression> Parser::parseFactor()
     
     if (is_index)
         left = parseIndex();
-    else if (isFuncDef(cur_token.getLiteral()))
+    else if (auto [is_def, is_built_in] = 
+                 isFuncDef(cur_token.getLiteral());
+                 is_def)
         left = parseCall();
     else
         left = std::make_unique<LiteralExpression>(cur_token);

@@ -61,10 +61,6 @@ std::string Token::prinTokenType()
             return std::string("DES-INT");
         case TokenType::TOKEN_DES_FLOAT:
             return std::string("DES-FLOAT");
-        case TokenType::TOKEN_PRINT_VAR_INT:
-            return std::string("PRINT_VAR_INT");
-        case TokenType::TOKEN_PRINT_VAR_FLOAT:
-            return std::string("PRINT_VAR_FLOAT");
         default:
             std::cerr << "[Error] prinTokenType: "
                       << "unsupported token type. \n";
@@ -102,12 +98,6 @@ Lexer::Lexer(const char* fn)
     keywords.insert({"void", Token::TokenType::TOKEN_DES_VOID});
     keywords.insert({"int", Token::TokenType::TOKEN_DES_INT});
     keywords.insert({"float", Token::TokenType::TOKEN_DES_FLOAT});
-
-    // fill built function
-    keywords.insert({"printVarInt", 
-                     Token::TokenType::TOKEN_PRINT_VAR_INT});
-    keywords.insert({"printVarFloat", 
-                     Token::TokenType::TOKEN_PRINT_VAR_FLOAT});
 }
 
 bool Lexer::getToken(Token &tok)

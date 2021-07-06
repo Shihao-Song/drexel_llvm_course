@@ -5,7 +5,7 @@ int addi_2(int x, int y)
 
 int addi_4(int a, int b, int c, int d)
 {
-    return addi_2(a, c) + addi_2(c, d);
+    return addi_2(a, b) + addi_2(c, d);
 }
 
 int main()
