@@ -37,6 +37,8 @@ void Parser::advanceTokens()
 
 void Parser::parseProgram()
 {
+    // Should always be functions at this time since
+    // we don't support globals or structures...
     while (!cur_token.isTokenEOF())
     {
         FuncStatement::RetType ret_type;
