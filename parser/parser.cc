@@ -39,7 +39,7 @@ void Parser::advanceTokens()
 
 void Parser::parseProgram()
 {
-    // Should always be functions at this time since
+    // Should always be functions to start with since
     // we don't support globals or structures...
     while (!cur_token.isTokenEOF())
     {
