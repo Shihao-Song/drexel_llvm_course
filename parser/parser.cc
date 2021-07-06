@@ -44,19 +44,7 @@ void Parser::parseProgram()
         std::vector<FuncStatement::Argument> args;
         std::vector<std::shared_ptr<Statement>> codes;
 
-        if (!cur_token.isTokenDef())
-        {
-            std::cerr << "[Error] Don't support global variables or "
-                      << "class or structure yet.\n";
-            std::cerr << "[Line] " << cur_token.getLine() << "\n";
-            exit(0);
-	}
-
-        advanceTokens();
-        assert(cur_token.isTokenLT());
-
         // determine return type
-        advanceTokens();
         if (cur_token.isTokenDesVoid())
         {
 	    ret_type = FuncStatement::RetType::VOID;
@@ -75,13 +63,17 @@ void Parser::parseProgram()
             std::cerr << "[Line] " << cur_token.getLine() << "\n";
 	    exit(0);
         }
-    
-        advanceTokens();
-        assert(cur_token.isTokenGT());
-
+                
         // function name
         advanceTokens();
         iden = std::make_unique<Identifier>(cur_token);
+        if (!next_token.isTokenLP())
+        {
+            std::cerr << "[Error] Don't support global variables or "
+                      << "class or structure yet.\n";
+            std::cerr << "[Line] " << cur_token.getLine() << "\n";
+            exit(0);
+	}
 
         advanceTokens();
         assert(cur_token.isTokenLP());
