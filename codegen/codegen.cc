@@ -148,55 +148,59 @@ void Codegen::assnGen(std::string &cur_func_name,
     Parser::TypeRecord var_type;
     Value *reg;
 
-    // TODO, support index
-    if (iden->isExprLiteral())
-    {
-        LiteralExpression *lit = 
-            static_cast<LiteralExpression*>(iden);
+    ArrayExpression* array_info =
+        (expr->isExprArray()) ?
+        static_cast<ArrayExpression*>(expr) :
+        nullptr;
 
-        ArrayExpression* array_info =
-            (expr->isExprArray()) ?
-            static_cast<ArrayExpression*>(expr) :
-            nullptr;
+    reg = allocaForIden(cur_func_name, var_name, var_type, 
+                        iden, array_info);
 
-        reg = allocaForLitIden(cur_func_name, var_name, var_type, 
-                               lit, array_info);
-    }
-    else
-    {
-        std::cerr << "[Error] unsupported identifier type. \n";
-        exit(0);
-    }
-    
+    // Extract assigned value    
     Value *val = nullptr;
-    if (expr->isExprArray())
+    if (array_info != nullptr)
     {
-        ArrayExpression* array_info = static_cast<ArrayExpression*>(expr);
         arrayExprGen(var_type, reg, array_info);
     }
     else
     {
         val = exprGen(var_type, expr);
-    }
-    
-    if (val != nullptr) 
         builder->CreateStore(val, reg);
-    local_var_tracking[var_name] = reg;
+    }
 }
 
-Value* Codegen::allocaForLitIden(std::string &func_name,
-                                 std::string &var_name, 
-                                 Parser::TypeRecord &var_type,
-                                 LiteralExpression* lit,
-                                 ArrayExpression* array_info)
+Value* Codegen::allocaForIden(std::string &func_name,
+                              std::string &var_name, 
+                              Parser::TypeRecord &var_type,
+                              Expression* iden,
+                              ArrayExpression* array_info)
 {
-    var_name = lit->getLiteral();
-    var_type = parser->getInFuncVarType(func_name, var_name);
+    // Determine identifier type
+    if (iden->isExprLiteral())
+    {
+        LiteralExpression *lit = 
+            static_cast<LiteralExpression*>(iden);
+
+        var_name = lit->getLiteral();
+        var_type = parser->getInFuncVarType(func_name, var_name);
+    }
+    else if (iden->isExprIndex())
+    {
+        IndexExpression *index = static_cast<IndexExpression*>(iden);
+	
+        var_name = index->getIden();
+        var_type = parser->getInFuncVarType(func_name, var_name);
+    }
 
     Value *reg;
     if (auto iter = local_var_tracking.find(var_name);
             iter == local_var_tracking.end())
     {
+        // Allocating new variables, must be a literal iden
+        assert(iden->isExprLiteral());
+        LiteralExpression *lit = 
+            static_cast<LiteralExpression*>(iden);
+
         if (var_type == Parser::TypeRecord::INT)
         {
             reg = builder->CreateAlloca(Type::getInt32Ty(*context));
@@ -228,7 +232,6 @@ Value* Codegen::allocaForLitIden(std::string &func_name,
             ArrayType* array_type = ArrayType::get(ele_type, num_ele_int);
 
             reg = builder->CreateAlloca(array_type);
-
         }
         else
         {
@@ -236,10 +239,23 @@ Value* Codegen::allocaForLitIden(std::string &func_name,
                       << var_name << "\n";
             exit(0);
         }
+        local_var_tracking[var_name] = reg;
     }
     else
     {
-        reg = iter->second;
+        if (iden->isExprIndex())
+        {
+            IndexExpression *index = static_cast<IndexExpression*>(iden);
+            Value *idx = exprGen(Parser::TypeRecord::INT, index->getIndex());
+            std::vector<Value*> idxs;
+            idxs.push_back(ConstantInt::get(*context, APInt(32, 0)));
+            idxs.push_back(idx);
+            reg = builder->CreateInBoundsGEP(iter->second, idxs);
+        }
+        else if (iden->isExprLiteral())
+        {
+            reg = iter->second;
+        }
     }
 
     return reg;
