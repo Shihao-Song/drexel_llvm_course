@@ -165,8 +165,6 @@ class Lexer
         if (iss.eof() && !iss.fail()) return true;
         else return false;
     }
-
-    bool safeNegSignBegin(char c);
 };
 
 }

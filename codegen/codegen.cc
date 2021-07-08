@@ -175,6 +175,8 @@ Value* Codegen::allocaForIden(std::string &func_name,
                               Expression* iden,
                               ArrayExpression* array_info)
 {
+    // We need to make sure the variable has not been allocated before
+
     // Determine identifier type
     if (iden->isExprLiteral())
     {

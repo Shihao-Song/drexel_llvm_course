@@ -149,7 +149,6 @@ void Lexer::parseLine(std::string &line)
     std::shared_ptr<std::string> cur_line = 
         std::make_shared<std::string>(line);
 
-    bool safe_neg_begin = false;
     // Extract all the tokens from the current line
     for (auto iter = line.begin(); iter != line.end(); iter++)
     {
@@ -163,25 +162,16 @@ void Lexer::parseLine(std::string &line)
         if (auto sep_iter = seps.find(*iter); 
             sep_iter != seps.end())
         {
-            // Need to take care of negative sign
-            if (*iter != '-' || !safe_neg_begin)
-            {
-                std::string literal = cur_token_str;
-                Token::TokenType type = sep_iter->second;
-                Token _tok(type, literal, cur_line);
-                // std::cout << _tok.prinTokenType() << " | "
-                //           << _tok.getVal() << "\n";
-                toks_per_line.push(_tok);
+            std::string literal = cur_token_str;
+            Token::TokenType type = sep_iter->second;
+            Token _tok(type, literal, cur_line);
+            // std::cout << _tok.prinTokenType() << " | "
+            //           << _tok.getVal() << "\n";
+            toks_per_line.push(_tok);
                 
-                if (safeNegSignBegin(*iter))
-                    safe_neg_begin = true;
-                else
-                    safe_neg_begin = false;
-                continue;
-            }
+            continue;
         }
 
-        safe_neg_begin = false;
         // (3) parse the token
         auto next = iter + 1;
         while (next != line.end())
@@ -233,17 +223,5 @@ void Lexer::parseLine(std::string &line)
             toks_per_line.push(_tok);
         }
     }
-}
-
-bool Lexer::safeNegSignBegin(char c)
-{
-    // x = -10;
-    // x = 10 + -10;
-    // x = add(4, -10);
-    // x = add(-10, 4);
-    // {-1, 2}
-
-    return (c == '+' || c == '-' || c == '*' || c == '/' || 
-            c == '=' || c == '(' || c == ',' || c == '{');
 }
 }
