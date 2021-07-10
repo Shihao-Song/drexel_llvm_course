@@ -45,7 +45,6 @@ struct Token
         TOKEN_RBRACKET,
 
         // Keywords
-        TOKEN_DEF,
         TOKEN_RETURN,
 
         // For function/argument type
@@ -53,6 +52,11 @@ struct Token
         TOKEN_DES_VOID,
         TOKEN_DES_INT,
         TOKEN_DES_FLOAT,
+
+        // Control flow
+        TOKEN_IF,
+        TOKEN_ELSE,
+        TOKEN_FOR
     } type = TokenType::TOKEN_ILLEGAL;
 
     std::string literal = "";
@@ -98,7 +102,6 @@ struct Token
     bool isTokenIden() { return type == TokenType::TOKEN_IDENTIFIER; }
 
     bool isTokenEOF() { return type == TokenType::TOKEN_EOF; }
-    bool isTokenDef() { return type == TokenType::TOKEN_DEF; }
     bool isTokenReturn() { return type == TokenType::TOKEN_RETURN; }
     bool isTokenDesVoid() { return type == TokenType::TOKEN_DES_VOID; }
     bool isTokenDesInt() { return type == TokenType::TOKEN_DES_INT; }
@@ -128,6 +131,10 @@ struct Token
 
     bool isTokenLT() { return type == TokenType::TOKEN_LT; }
     bool isTokenGT() { return type == TokenType::TOKEN_GT; }
+
+    bool isTokenIf() { return type == TokenType::TOKEN_IF; }
+    bool isTokenElse() { return type == TokenType::TOKEN_ELSE; }
+    bool isTokenFor() { return type == TokenType::TOKEN_FOR; }
 
     std::shared_ptr<std::string> line;
     std::string& getLine() { return *line; }

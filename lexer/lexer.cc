@@ -51,8 +51,6 @@ std::string Token::prinTokenType()
             return std::string("LBRACKET");
         case TokenType::TOKEN_RBRACKET:
             return std::string("RBRACKET");
-        case TokenType::TOKEN_DEF:
-            return std::string("DEF");
         case TokenType::TOKEN_RETURN:
             return std::string("RETURN");
         case TokenType::TOKEN_DES_VOID:
@@ -61,6 +59,12 @@ std::string Token::prinTokenType()
             return std::string("DES-INT");
         case TokenType::TOKEN_DES_FLOAT:
             return std::string("DES-FLOAT");
+        case TokenType::TOKEN_IF:
+            return std::string("IF");
+        case TokenType::TOKEN_ELSE:
+            return std::string("ELSE");
+        case TokenType::TOKEN_FOR:
+            return std::string("FOR");
         default:
             std::cerr << "[Error] prinTokenType: "
                       << "unsupported token type. \n";
@@ -92,12 +96,15 @@ Lexer::Lexer(const char* fn)
     seps.insert({']', Token::TokenType::TOKEN_RBRACKET});
 
     // fill pre-defined keywords
-    keywords.insert({"def", Token::TokenType::TOKEN_DEF});
     keywords.insert({"return", Token::TokenType::TOKEN_RETURN});
 
     keywords.insert({"void", Token::TokenType::TOKEN_DES_VOID});
     keywords.insert({"int", Token::TokenType::TOKEN_DES_INT});
     keywords.insert({"float", Token::TokenType::TOKEN_DES_FLOAT});
+
+    keywords.insert({"if", Token::TokenType::TOKEN_IF});
+    keywords.insert({"else", Token::TokenType::TOKEN_ELSE});
+    keywords.insert({"for", Token::TokenType::TOKEN_FOR});
 }
 
 bool Lexer::getToken(Token &tok)
@@ -154,6 +161,7 @@ void Lexer::parseLine(std::string &line)
     {
         // (1) skip the space/tab
         if (*iter == ' ' || *iter == '\t') continue;
+        if (*iter == '/'  && *(iter + 1) == '/') break;
 
         // start to process token
         std::string cur_token_str(1, *iter);
