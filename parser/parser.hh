@@ -632,6 +632,8 @@ class RetStatement : public Statement
 };
 
 // For if-else and for loop
+// TODO, condition may need to a vector considering situations like
+// cond_0 && cond_1
 class Condition
 {
   protected:
@@ -688,8 +690,6 @@ class Condition
 
 class IfStatement : public Statement
 {    
-    // TODO, condition may need to a vector considering situations like
-    // cond_0 && cond_1
   protected:
     std::shared_ptr<Condition> cond;
     std::vector<std::shared_ptr<Statement>> taken_block;
@@ -724,6 +724,46 @@ class IfStatement : public Statement
         , not_taken_block(std::move(_if.not_taken_block))
         , taken_local_vars(_if.taken_local_vars)
         , not_taken_local_vars(_if.not_taken_local_vars)
+    {}
+
+    void printStatement() override;
+};
+
+class ForStatement : public Statement
+{    
+  protected:
+    std::shared_ptr<Statement> start;
+    std::shared_ptr<Condition> end;
+    std::shared_ptr<Statement> step;
+    std::vector<std::shared_ptr<Statement>> block;
+
+    std::unordered_map<std::string, ValueType::Type> block_local_vars;
+
+  public:
+
+    ForStatement(std::unique_ptr<Statement> &_start,
+                 std::unique_ptr<Condition> &_end,
+                 std::unique_ptr<Statement> &_step,
+                 std::vector<std::shared_ptr<Statement>> &_block,
+                 std::unordered_map<std::string, 
+                                    ValueType::Type> &_block_local_vars)
+    {
+        type = StatementType::FOR_STATEMENT;
+        
+        start = std::move(_start);
+        end = std::move(_end);
+        step = std::move(_step);
+        block = std::move(_block);
+
+        block_local_vars = _block_local_vars;
+    }
+
+    ForStatement(const ForStatement &_for)
+        : start(std::move(_for.start))
+        , end(std::move(_for.end))
+        , step(std::move(_for.step))
+        , block(std::move(_for.block))
+        , block_local_vars(_for.block_local_vars)
     {}
 
     void printStatement() override;
@@ -980,7 +1020,10 @@ class Parser
     void parseStatement(std::string&,
                         std::vector<std::shared_ptr<Statement>>&);
     std::unique_ptr<Statement> parseAssnStatement();
+
+    std::unique_ptr<Condition> parseCondition();
     std::unique_ptr<Statement> parseIfStatement(std::string&);
+    std::unique_ptr<Statement> parseForStatement(std::string&);
 
     std::unique_ptr<Expression> parseExpression();
     std::unique_ptr<Expression> parseTerm(

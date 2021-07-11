@@ -134,7 +134,20 @@ void Parser::parseStatement(std::string &cur_func_name,
     {
         entering_sub_block++;
         auto code = parseIfStatement(cur_func_name);
-        // code->printStatement(); std::cout << "\n\n";
+        if (entering_sub_block > 1)
+        {
+            // Nested loop/if
+            advanceTokens();
+            entering_sub_block--;
+        }
+        codes.push_back(std::move(code));
+        return;
+    }
+
+    if (cur_token.isTokenFor())
+    {
+        entering_sub_block++;
+        auto code = parseForStatement(cur_func_name);
         if (entering_sub_block > 1)
         {
             // Nested loop/if
@@ -409,13 +422,8 @@ std::unique_ptr<Expression> Parser::parseCall()
     return ret;
 }
 
-std::unique_ptr<Statement> Parser::parseIfStatement(std::string& 
-                                                    parent_func_name)
+std::unique_ptr<Condition> Parser::parseCondition()
 {
-    advanceTokens();
-    assert(cur_token.isTokenLP());
-
-    advanceTokens();
     // The type must be consistent
     auto swap = cur_expr_type;
     bool is_index = (next_token.isTokenLBracket()) ? 
@@ -444,7 +452,19 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
                                     comp_opr_str,
                                     cur_expr_type);
     cur_expr_type = swap;
-    
+
+    return cond;
+}
+
+std::unique_ptr<Statement> Parser::parseIfStatement(std::string& 
+                                                    parent_func_name)
+{
+    advanceTokens();
+    assert(cur_token.isTokenLP());
+
+    advanceTokens();
+    auto cond = parseCondition();
+
     // Parse taken block
     advanceTokens();
     assert(cur_token.isTokenLBrace());
@@ -487,9 +507,51 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
                                       not_taken_block_local_vars);
     
     assert(cur_token.isTokenRBrace());
-    std::cout << cur_token.getLiteral() << "\n";
     return if_statement;
 }
+
+std::unique_ptr<Statement> Parser::parseForStatement(std::string& 
+                                                     parent_func_name)
+{
+    std::vector<std::shared_ptr<Statement>> block;
+    std::unordered_map<std::string,
+                       ValueType::Type> block_local_vars;
+    local_vars_tracker.push_back(&block_local_vars);
+
+    advanceTokens();
+    assert(cur_token.isTokenLP());
+
+    advanceTokens();
+    auto start = parseAssnStatement();
+
+    advanceTokens();
+    auto end = parseCondition();
+
+    advanceTokens();
+    auto step = parseAssnStatement();
+    
+    advanceTokens();
+    assert(cur_token.isTokenLBrace());
+
+    while (!cur_token.isTokenRBrace())
+    {
+        advanceTokens();
+        parseStatement(parent_func_name, block);
+    }
+    
+    std::unique_ptr<Statement> for_statement = 
+        std::make_unique<ForStatement>(start,
+                                       end,
+                                       step,
+                                       block,
+                                       block_local_vars);
+                                       	       
+    assert(cur_token.isTokenRBrace());
+    local_vars_tracker.pop_back();
+   
+    return for_statement;
+}
+
 
 std::unique_ptr<Expression> Parser::parseExpression()
 {
@@ -764,6 +826,7 @@ void IfStatement::printStatement()
 {
     std::cout << "  {\n";
     std::cout << "  [IF Statement] \n";
+    std::cout << "  [Condition]\n";
     cond->printStatement();
     std::cout << "  [Taken Block]\n";
     std::cout << "  {\n";
@@ -788,9 +851,30 @@ void IfStatement::printStatement()
 
 }
 
+void ForStatement::printStatement()
+{
+    std::cout << "  {\n";
+    std::cout << "  [For Statement] \n";
+    std::cout << "  [Start]\n";
+    start->printStatement();
+    std::cout << "  [End]\n";
+    end->printStatement();
+    std::cout << "  [Step]\n";
+    step->printStatement();
+
+    std::cout << "  [Block]\n";
+    std::cout << "  {\n";
+    for (auto &code : block)
+    {
+        code->printStatement();
+    }
+    std::cout << "  }\n";
+    std::cout << "  }\n";
+
+}
+
 void Condition::printStatement()
 {
-    std::cout << "  [Condition]\n";
     std::cout << "  {\n";
     std::cout << "    [Left]\n";
     if (left->getType() == Expression::ExpressionType::LITERAL)
