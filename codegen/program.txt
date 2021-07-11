@@ -23,17 +23,5 @@ int main()
     sum = addi_4(x[0], x[1], x[2], x[3]);
     printVarInt(sum);
 
-    // Test if-else statement
-    int cond_0 = 5;
-    int cond_1 = 7;
-    if (cond_0 < cond_1)
-    {
-        printVarInt(0);
-    }
-    else
-    {
-        printVarInt(1);
-    }
-
     return 0;
 }

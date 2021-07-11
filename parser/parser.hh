@@ -10,6 +10,75 @@
 
 namespace Frontend
 {
+// This class helps us to track variable/function type
+class ValueType
+{
+  public:
+    enum class Type : int
+    {
+        VOID,
+        VOID_PTR,
+
+        INT,
+        INT_ARRAY,
+        INT_PTR,
+
+        FLOAT,
+        FLOAT_ARRAY,
+        FLOAT_PTR,
+
+        MAX
+    };
+
+    ValueType() {}
+
+    static Type typeTokenToValueType(Token _tok, bool is_array = false,
+                                                 bool is_ptr = false)
+    {
+        if (_tok.isTokenDesVoid())
+        {
+            if (is_ptr) 
+                return Type::VOID_PTR;
+	    else 
+                return Type::VOID;
+        }
+        else if (_tok.isTokenDesInt())
+        {
+            if (is_array)
+                return Type::INT_ARRAY;
+            else if (is_ptr)
+                return Type::INT_PTR;
+            else
+                return Type::INT;
+        }
+        else if (_tok.isTokenDesFloat())
+        {
+            if (is_array)
+                return Type::FLOAT_ARRAY;
+            else if (is_ptr)
+                return Type::FLOAT_PTR;
+            else
+                return Type::FLOAT;
+        }
+        else
+        {
+            return Type::MAX;
+        }
+    }
+
+    static Type strToValueType(std::string _type)
+    {
+        if (_type == "void")
+            return ValueType::Type::VOID;
+        else if (_type == "int") 
+            return ValueType::Type::INT;
+        else if (_type == "float") 
+            return ValueType::Type::FLOAT;
+        else
+            return ValueType::Type::MAX;
+    }
+};
+
 /* Identifier definition */
 class Identifier
 {
@@ -73,54 +142,6 @@ class Expression
     }
 };
 
-class CallExpression : public Expression
-{
-  protected:
-    std::shared_ptr<Identifier> def;
-    std::vector<std::shared_ptr<Expression>> args;
-
-  public:
-    CallExpression(const CallExpression &_expr) 
-    {
-        def = std::move(_expr.def);
-        args = std::move(_expr.args);
-        type = ExpressionType::CALL;
-    }
-
-    CallExpression(std::unique_ptr<Identifier> &_tok, 
-        std::vector<std::shared_ptr<Expression>>_args) 
-        : def(std::move(_tok))
-        , args(std::move(_args))
-    {
-        type = ExpressionType::CALL;
-    }
-
-    // Debug print associated with the print in ArithExp
-    std::string print(unsigned level) override
-    {
-        std::string prefix(level * 2, ' ');
-
-        std::string ret = prefix + "{\n";
-        ret += (prefix + "  [CALL] " + def->getLiteral() + "\n");
-        unsigned idx = 0;
-        for (auto &arg : args)
-        {
-            ret += (prefix + "  [ARG " + std::to_string(idx++) + "]\n");
-            ret += (prefix + "  {\n");
-            if (arg->getType() == Expression::ExpressionType::LITERAL)
-                ret += (prefix + "    ");
-            ret += arg->print(level + 2);
-            ret += (prefix + "  }\n");
-        }
-
-	ret += (prefix + "}\n");
-        return ret;
-    }
-
-    auto &getCallFunc() { return def->getLiteral(); }
-    auto &getArgs() { return args; }
-};
-
 class LiteralExpression : public Expression
 {
   protected:
@@ -147,6 +168,107 @@ class LiteralExpression : public Expression
     std::string print(unsigned level) override
     {
         return (tok.getLiteral() + "\n");
+    }
+};
+
+class ArithExpression : public Expression
+{
+  protected:
+    // Unique is also good but it will incur errors when
+    // invoking copy constructors
+    std::shared_ptr<Expression> left;
+    std::shared_ptr<Expression> right;
+
+  public:
+    // unique can be easily converted to shared
+    ArithExpression(std::unique_ptr<Expression> &_left,
+                    std::unique_ptr<Expression> &_right,
+                    ExpressionType _type)
+    {
+        left = std::move(_left);
+        right = std::move(_right);
+        type = _type;
+    }
+
+    ArithExpression(const ArithExpression &_expr)
+    {
+        left = std::move(_expr.left);
+        right = std::move(_expr.right);
+        type = _expr.type;
+    }
+
+    auto getLeft() { return left.get(); }
+    auto getRight() { return right.get(); }
+
+    char getOperator()
+    {
+        switch(type)
+        {
+            case ExpressionType::PLUS:
+                return '+';
+            case ExpressionType::MINUS:
+                return '-';
+            case ExpressionType::ASTERISK:
+                return '*';
+            case ExpressionType::SLASH:
+                return '/';
+            default:
+                assert(false && "unsupported operator");
+        }
+    }
+
+    // Debug print
+    std::string print(unsigned level) override
+    {
+        std::string prefix(level * 2, ' ');
+
+        std::string ret = "";
+        if (left != nullptr)
+        {
+            if (left->getType() == ExpressionType::LITERAL)
+            {
+                ret += prefix;
+            }
+
+            if (left->getType() == ExpressionType::CALL)
+                ret += left->print(level);
+            else
+                ret += left->print(level + 1);
+        }
+        
+        if (right != nullptr)
+        {
+            ret += prefix;
+            if (type == ExpressionType::PLUS)
+            {
+                ret += "+";
+            }
+            else if (type == ExpressionType::MINUS)
+            {
+                ret += "-";
+            }
+            else if (type == ExpressionType::ASTERISK)
+            {
+                ret += "*";
+            }
+            else if (type == ExpressionType::SLASH)
+            {
+                ret += "/";
+            }
+            ret += "\n";
+            
+            if (right->getType() == ExpressionType::LITERAL) 
+            {
+                ret += prefix;
+            }
+
+            if (right->getType() == ExpressionType::CALL)
+                ret += right->print(level);
+            else
+                ret += right->print(level + 1);
+        }
+         
+        return ret;
     }
 };
 
@@ -251,106 +373,52 @@ class IndexExpression : public Expression
     
 };
 
-class ArithExpression : public Expression
+class CallExpression : public Expression
 {
   protected:
-    // Unique is also good but it will incur errors when
-    // invoking copy constructors
-    std::shared_ptr<Expression> left;
-    std::shared_ptr<Expression> right;
+    std::shared_ptr<Identifier> def;
+    std::vector<std::shared_ptr<Expression>> args;
 
   public:
-
-    // unique can be easily converted to shared
-    ArithExpression(std::unique_ptr<Expression> &_left,
-                    std::unique_ptr<Expression> &_right,
-                    ExpressionType _type)
+    CallExpression(const CallExpression &_expr) 
     {
-        left = std::move(_left);
-        right = std::move(_right);
-        type = _type;
+        def = std::move(_expr.def);
+        args = std::move(_expr.args);
+        type = ExpressionType::CALL;
     }
 
-    ArithExpression(const ArithExpression &_expr)
+    CallExpression(std::unique_ptr<Identifier> &_tok, 
+        std::vector<std::shared_ptr<Expression>>_args) 
+        : def(std::move(_tok))
+        , args(std::move(_args))
     {
-        left = std::move(_expr.left);
-        right = std::move(_expr.right);
-        type = _expr.type;
+        type = ExpressionType::CALL;
     }
 
-    auto getLeft() { return left.get(); }
-    auto getRight() { return right.get(); }
-
-    char getOperator()
-    {
-        switch(type)
-        {
-            case ExpressionType::PLUS:
-                return '+';
-            case ExpressionType::MINUS:
-                return '-';
-            case ExpressionType::ASTERISK:
-                return '*';
-            case ExpressionType::SLASH:
-                return '/';
-            default:
-                assert(false && "unsupported operator");
-        }
-    }
-
-    // Debug print
+    // Debug print associated with the print in ArithExp
     std::string print(unsigned level) override
     {
         std::string prefix(level * 2, ' ');
 
-        std::string ret = "";
-        if (left != nullptr)
+        std::string ret = prefix + "{\n";
+        ret += (prefix + "  [CALL] " + def->getLiteral() + "\n");
+        unsigned idx = 0;
+        for (auto &arg : args)
         {
-            if (left->getType() == ExpressionType::LITERAL)
-            {
-                ret += prefix;
-            }
-
-            if (left->getType() == ExpressionType::CALL)
-                ret += left->print(level);
-            else
-                ret += left->print(level + 1);
+            ret += (prefix + "  [ARG " + std::to_string(idx++) + "]\n");
+            ret += (prefix + "  {\n");
+            if (arg->getType() == Expression::ExpressionType::LITERAL)
+                ret += (prefix + "    ");
+            ret += arg->print(level + 2);
+            ret += (prefix + "  }\n");
         }
-        
-        if (right != nullptr)
-        {
-            ret += prefix;
-            if (type == ExpressionType::PLUS)
-            {
-                ret += "+";
-            }
-            else if (type == ExpressionType::MINUS)
-            {
-                ret += "-";
-            }
-            else if (type == ExpressionType::ASTERISK)
-            {
-                ret += "*";
-            }
-            else if (type == ExpressionType::SLASH)
-            {
-                ret += "/";
-            }
-            ret += "\n";
-            
-            if (right->getType() == ExpressionType::LITERAL) 
-            {
-                ret += prefix;
-            }
 
-            if (right->getType() == ExpressionType::CALL)
-                ret += right->print(level);
-            else
-                ret += right->print(level + 1);
-        }
-         
+	ret += (prefix + "}\n");
         return ret;
     }
+
+    auto &getCallFunc() { return def->getLiteral(); }
+    auto &getArgs() { return args; }
 };
 
 /* Statement definition*/
@@ -364,6 +432,8 @@ class Statement
         RET_STATEMENT,
         BUILT_IN_CALL_STATEMENT,
         NORMAL_CALL_STATEMENT,
+        IF_STATEMENT,
+        FOR_STATEMENT,
         ILLEGAL
     };
 
@@ -386,6 +456,123 @@ class Statement
     {
         return type == StatementType::NORMAL_CALL_STATEMENT;
     }
+    bool isStatementIf() { return type == StatementType::IF_STATEMENT; }
+    bool isStatementFor() { return type == StatementType::FOR_STATEMENT; }
+};
+
+class AssnStatement : public Statement
+{
+  protected:
+    // using shared due to copy constructors
+    std::shared_ptr<Expression> iden;
+    std::shared_ptr<Expression> expr;
+
+  public:
+    AssnStatement(std::unique_ptr<Expression> &_iden,
+                 std::unique_ptr<Expression> &_expr)
+    {
+        type = StatementType::ASSN_STATEMENT;
+
+        iden = std::move(_iden);
+        expr = std::move(_expr);
+    }
+    
+    AssnStatement(const AssnStatement &_statement)
+    {
+        iden = std::move(_statement.iden);
+        expr = std::move(_statement.expr);
+        type = _statement.type;
+    }
+
+    auto getIden() { return iden.get(); }
+    auto getExpr() { return expr.get(); }
+
+    void printStatement() override;
+};
+
+class FuncStatement : public Statement
+{
+  public:
+    class Argument
+    {
+      protected:
+        ValueType::Type type = ValueType::Type::MAX;
+        std::shared_ptr<Identifier> iden;
+
+      public:
+        Argument(std::string &_type, std::unique_ptr<Identifier> &_iden)
+        {
+            type = ValueType::strToValueType(_type);
+
+            assert(type != ValueType::Type::MAX);
+
+            iden = std::move(_iden);
+        }
+
+        Argument(const Argument &arg)
+        {
+            type = arg.type;
+            iden = std::move(arg.iden);
+        }
+
+        std::string print()
+        {
+            std::string ret = "";
+            if (type == ValueType::Type::INT) ret += "int : ";
+            else if (type == ValueType::Type::FLOAT) ret += "float : ";
+
+            ret += iden->getLiteral();
+
+            return ret;
+        }
+
+        std::string &getLiteral() { return iden->getLiteral(); }
+        auto getArgType() { return type; }
+    };
+
+  protected:
+    // using shared due to copy constructors
+    ValueType::Type func_type;
+    std::shared_ptr<Identifier> iden;
+    std::vector<Argument> args;
+    std::vector<std::shared_ptr<Statement>> codes;
+
+    std::unordered_map<std::string, ValueType::Type> local_vars;
+
+  public:
+    FuncStatement(ValueType::Type _type,
+                  std::unique_ptr<Identifier> &_iden,
+                  std::vector<Argument> &_args,
+                  std::vector<std::shared_ptr<Statement>> &_codes,
+                  std::unordered_map<std::string,ValueType::Type> &_local_vars)
+    {
+        type = StatementType::FUNC_STATEMENT;
+
+        func_type = _type;
+        iden = std::move(_iden);
+        args = _args;
+        codes = std::move(_codes);
+        local_vars = _local_vars;
+    }
+    
+    FuncStatement(const FuncStatement &_statement)
+    {
+        type = _statement.type;
+
+        func_type = _statement.func_type;
+        iden = std::move(_statement.iden);
+        args = _statement.args;
+        codes = std::move(_statement.codes);
+        local_vars = _statement.local_vars;
+    }
+   
+    auto getRetType() { return func_type; }
+
+    auto &getFuncName() { return iden->getLiteral(); }
+    auto &getFuncArgs() { return args; }
+    auto &getFuncCodes() { return codes; }
+
+    void printStatement() override;
 };
 
 class CallStatement : public Statement
@@ -444,132 +631,100 @@ class RetStatement : public Statement
     void printStatement() override;
 };
 
-class AssnStatement : public Statement
+// For if-else and for loop
+class Condition
 {
   protected:
-    // using shared due to copy constructors
-    std::shared_ptr<Expression> iden;
-    std::shared_ptr<Expression> expr;
+    ValueType::Type comp_type;
+
+    enum class OperatorType : int
+    {
+        EQ, NE, GT, GE, LT, LE, MAX
+    };
+    OperatorType opr_type = OperatorType::MAX;
+    std::string opr_type_str;
+
+    std::shared_ptr<Expression> left;
+    std::shared_ptr<Expression> right;
 
   public:
-    AssnStatement(std::unique_ptr<Expression> &_iden,
-                 std::unique_ptr<Expression> &_expr)
+    Condition(std::unique_ptr<Expression> &_left,
+              std::unique_ptr<Expression> &_right,
+              std::string &_opr_type_str,
+              ValueType::Type _comp_type)
     {
-        type = StatementType::ASSN_STATEMENT;
+        left = std::move(_left);
+        right = std::move(_right);
 
-        iden = std::move(_iden);
-        expr = std::move(_expr);
+        if (_opr_type_str == "==")
+            opr_type = OperatorType::EQ;
+        else if (_opr_type_str == "!=")
+            opr_type = OperatorType::NE;
+        else if (_opr_type_str == ">")
+            opr_type = OperatorType::GT;
+        else if (_opr_type_str == ">=")
+            opr_type = OperatorType::GE;
+        else if (_opr_type_str == "<")
+            opr_type = OperatorType::LT;
+        else if (_opr_type_str == "<=")
+            opr_type = OperatorType::LE;
+        else
+            assert(false);
+
+        opr_type_str = _opr_type_str;
+
+        comp_type = _comp_type; 
     }
-    
-    AssnStatement(const AssnStatement &_statement)
-    {
-        iden = std::move(_statement.iden);
-        expr = std::move(_statement.expr);
-        type = _statement.type;
-    }
 
-    auto getIden() { return iden.get(); }
-    auto getExpr() { return expr.get(); }
+    Condition(const Condition& _cond)
+        : left(std::move(_cond.left))
+        , right(std::move(_cond.right))
+        , opr_type_str(_cond.opr_type_str)
+        , comp_type(_cond.comp_type)
+    {}
 
-    void printStatement() override;
+    void printStatement();
 };
 
-class FuncStatement : public Statement
-{
-  public:
-    enum class RetType : int
-    {
-        // So far, we only support function return type to be
-        // void, int, or float
-        VOID, INT, FLOAT, MAX
-    };
-
-    class Argument
-    {
-      public:
-        enum class ArgumentType : int
-        {
-            // So far, we only support argument type to be
-            // integer or float
-            INT, FLOAT, MAX
-        };
-
-      protected:
-        ArgumentType type = ArgumentType::MAX;
-        std::shared_ptr<Identifier> iden;
-
-      public:
-        Argument(std::string &_type, std::unique_ptr<Identifier> &_iden)
-        {
-            if (_type == "int") type = ArgumentType::INT;
-            else if (_type == "float") type = ArgumentType::FLOAT;
-            else type = ArgumentType::MAX;
-
-            assert(type != ArgumentType::MAX);
-
-            iden = std::move(_iden);
-        }
-
-        Argument(const Argument &arg)
-        {
-            type = arg.type;
-            iden = std::move(arg.iden);
-        }
-
-        std::string print()
-        {
-            std::string ret = "";
-            if (type == ArgumentType::INT) ret += "int : ";
-            else if (type == ArgumentType::FLOAT) ret += "float : ";
-
-            ret += iden->getLiteral();
-
-            return ret;
-        }
-
-        std::string &getLiteral() { return iden->getLiteral(); }
-        bool isArgInt() { return type == ArgumentType::INT; }
-        bool isArgFloat() { return type == ArgumentType::FLOAT; }
-    };
-
+class IfStatement : public Statement
+{    
+    // TODO, condition may need to a vector considering situations like
+    // cond_0 && cond_1
   protected:
-    // using shared due to copy constructors
-    RetType func_type;
-    std::shared_ptr<Identifier> iden;
-    std::vector<Argument> args;
-    std::vector<std::shared_ptr<Statement>> codes;
+    std::shared_ptr<Condition> cond;
+    std::vector<std::shared_ptr<Statement>> taken_block;
+    std::vector<std::shared_ptr<Statement>> not_taken_block;
+
+    std::unordered_map<std::string, ValueType::Type> taken_local_vars;
+    std::unordered_map<std::string, ValueType::Type> not_taken_local_vars;
 
   public:
-    FuncStatement(RetType _type,
-                  std::unique_ptr<Identifier> &_iden,
-                  std::vector<Argument> &_args,
-                  std::vector<std::shared_ptr<Statement>> &_codes)
+
+    IfStatement(std::unique_ptr<Condition> &_cond,
+                std::vector<std::shared_ptr<Statement>> &_taken_block,
+                std::vector<std::shared_ptr<Statement>> &_not_taken_block,
+                std::unordered_map<std::string, 
+                                   ValueType::Type> &_taken_local_vars,
+                std::unordered_map<std::string, 
+                                   ValueType::Type> &_not_taken_local_vars)
     {
-        type = StatementType::FUNC_STATEMENT;
+        type = StatementType::IF_STATEMENT;
 
-        func_type = _type;
-        iden = std::move(_iden);
-        args = _args;
-        codes = std::move(_codes);
+        cond = std::move(_cond);
+        taken_block = std::move(_taken_block);
+        not_taken_block = std::move(_not_taken_block);
+
+        taken_local_vars = _taken_local_vars;
+        not_taken_local_vars = _not_taken_local_vars;
     }
-    
-    FuncStatement(const FuncStatement &_statement)
-    {
-        type = _statement.type;
 
-        func_type = _statement.func_type;
-        iden = std::move(_statement.iden);
-        args = _statement.args;
-        codes = std::move(_statement.codes);
-    }
-   
-    bool isRetTypeVoid() { return func_type == RetType::VOID; }
-    bool isRetTypeInt() { return func_type == RetType::INT; }
-    bool isRetTypeFloat() { return func_type == RetType::FLOAT; }
-
-    auto &getFuncName() { return iden->getLiteral(); }
-    auto &getFuncArgs() { return args; }
-    auto &getFuncCodes() { return codes; }
+    IfStatement(const IfStatement &_if)
+        : cond(std::move(_if.cond))
+        , taken_block(std::move(_if.taken_block))
+        , not_taken_block(std::move(_if.not_taken_block))
+        , taken_local_vars(_if.taken_local_vars)
+        , not_taken_local_vars(_if.not_taken_local_vars)
+    {}
 
     void printStatement() override;
 };
@@ -606,63 +761,33 @@ class Parser
     Token cur_token;
     Token next_token;    
     
-  public:
-    /************* Section one - record local variable types ***************/
-    enum class TypeRecord : int
-    {
-        VOID,
-        VOID_PTR,
-
-        INT,
-        INT_ARRAY,
-        INT_PTR,
-
-        FLOAT,
-        FLOAT_ARRAY,
-        FLOAT_PTR,
-
-        MAX
-    };
-
+  /************* Section one - record local variable types ***************/
   protected:
     bool isTokenTypeKeyword(Token &_tok)
     {
-        return (_tok.isTokenDesVoid() ||
-                _tok.isTokenDesInt() ||
-                _tok.isTokenDesFloat()); 
+        return ValueType::typeTokenToValueType(_tok) !=
+               ValueType::Type::MAX;
     }
 
     // Track each local variable's type
-    std::unordered_map<std::string,TypeRecord> local_var_type_tracker;
-
+    // vector is needed because we need a way to distinguish vars inside
+    // if/else, for.
+    int entering_sub_block = 0;
+    std::vector<std::unordered_map<std::string,
+                                   ValueType::Type>*> local_vars_tracker;
     // recordLocalVars v1 - record the arguments
     void recordLocalVars(FuncStatement::Argument &arg,
                          bool is_array = false,
                          bool is_ptr = false)
     {
-        // determine argument type
-        TypeRecord arg_type;
-        if (arg.isArgInt())
-        {
-            if (is_array)
-                arg_type = TypeRecord::INT_ARRAY;
-            else
-                arg_type = TypeRecord::INT;
-        }
-        else if (arg.isArgFloat())
-        {
-            if (is_array)
-                arg_type = TypeRecord::FLOAT_ARRAY;
-            else
-                arg_type = TypeRecord::FLOAT;
-        }
-        assert(arg_type != TypeRecord::MAX);
-
-        // argument name can not be duplicated
         auto arg_name = arg.getLiteral();
+        auto arg_type = arg.getArgType();
+        assert(arg_type != ValueType::Type::MAX);
 
-        if (auto iter = local_var_type_tracker.find(arg_name);
-                iter != local_var_type_tracker.end())
+        auto &tracker = local_vars_tracker.back();
+
+        if (auto iter = tracker->find(arg_name);
+                iter != tracker->end())
         {
             std::cerr << "[Error] recordLocalVars: "
                       << "duplicated variable definition."
@@ -671,7 +796,7 @@ class Parser
         }
         else
         {
-            local_var_type_tracker.insert({arg_name, arg_type});
+            tracker->insert({arg_name, arg_type});
         }
     }
     // recordLocalVars v2 - record local variables
@@ -680,47 +805,42 @@ class Parser
                          bool is_ptr = false)
     {
         // determine the token type
-        TypeRecord var_type;
-        if (_type_tok.isTokenDesInt())
-        {
-            cur_expr_type = TypeRecord::INT;
-            if (is_array)
-                var_type = TypeRecord::INT_ARRAY;
-            else
-                var_type = TypeRecord::INT;
-        }
-        else if (_type_tok.isTokenDesFloat())
-        {
-            cur_expr_type = TypeRecord::FLOAT;
-            if (is_array)
-                var_type = TypeRecord::FLOAT_ARRAY;
-            else
-                var_type = TypeRecord::FLOAT;
-        }
-        else
-        {
-            std::cerr << "[Error] recordLocalVars: "
-                      << "unsupported variable type."
-                      << std::endl;
-            exit(0);
-        }
+        auto var_type = 
+            ValueType::typeTokenToValueType(_type_tok, is_array, is_ptr);
+        assert(var_type != ValueType::Type::MAX);
+        cur_expr_type = var_type;
 
-	if (auto iter = local_var_type_tracker.find(_tok.getLiteral());
-                iter != local_var_type_tracker.end())
+        if (cur_expr_type == ValueType::Type::INT_ARRAY ||
+            cur_expr_type == ValueType::Type::INT_PTR)
         {
-            assert(var_type == iter->second);
+            cur_expr_type = ValueType::Type::INT;
         }
-        else
+        else if (cur_expr_type == ValueType::Type::FLOAT_ARRAY ||
+                 cur_expr_type == ValueType::Type::FLOAT_PTR)
         {
-            local_var_type_tracker[_tok.getLiteral()] = var_type;
+            cur_expr_type = ValueType::Type::FLOAT;
         }
+        
+        // We should always allocate new variables to the most inner block
+        auto &tracker = local_vars_tracker.back();
+        tracker->insert({_tok.getLiteral(), var_type});
+    }
+    std::pair<bool,ValueType::Type> isVarAlreadyDefined(Token &_tok)
+    {
+        auto &tracker = local_vars_tracker.back();
+        if (auto iter = tracker->find(_tok.getLiteral());
+                iter != tracker->end())
+        {
+            return std::make_pair(true, iter->second);
+        }
+        return std::make_pair(false, ValueType::Type::MAX);
     }
 
     /************* Section two - record function informatoin ****************/
     struct FuncRecord
     {
-        TypeRecord ret_type;
-        std::vector<TypeRecord> arg_types;
+        ValueType::Type ret_type;
+        std::vector<ValueType::Type> arg_types;
 
         bool is_built_in = false;
 
@@ -734,29 +854,19 @@ class Parser
     };
     std::unordered_map<std::string,FuncRecord> func_def_tracker;
     void recordDefs(std::string &_def,
-                    FuncStatement::RetType _type,
+                    ValueType::Type _type,
                     std::vector<FuncStatement::Argument> &_args)
     {
         auto iter = func_def_tracker.find(_def);
         assert(iter == func_def_tracker.end() && "duplicated def");
 
         FuncRecord record;
-        auto &ret_type = record.ret_type;
-        if (_type == FuncStatement::RetType::VOID)
-            ret_type = TypeRecord::VOID;
-	else if (_type == FuncStatement::RetType::INT)
-            ret_type = TypeRecord::INT;
-        else if (_type == FuncStatement::RetType::FLOAT)
-            ret_type = TypeRecord::FLOAT;
-        else
-            assert(false && "unsupported return type");
+        record.ret_type = _type;
 
         auto &arg_types = record.arg_types;
         for (auto &arg : _args)
         {
-            if (arg.isArgInt()) arg_types.push_back(TypeRecord::INT);
-            else if (arg.isArgFloat()) arg_types.push_back(TypeRecord::FLOAT);
-            else assert(false && "unsupported argument type");
+            arg_types.push_back(arg.getArgType());
         }
         
         func_def_tracker[_def] = record;
@@ -774,127 +884,6 @@ class Parser
             return std::make_pair(false,false);
         }
     }
-    /***************** Section two - strict type checking ******************/
-
-    // We force all the elements inside an EXPRESSION with the
-    // same type.
-    TypeRecord cur_expr_type = TypeRecord::MAX;
-    // strictTypeCheck v1 - check the token has the same type as the
-    // cur_expr_type.
-    void strictTypeCheck(Token &_tok, bool is_index_or_deref = false)
-    {
-        if (cur_expr_type == TypeRecord::MAX) return;
-
-        TypeRecord tok_type = getTokenType(_tok);
-        if (is_index_or_deref)
-        {
-            if ((cur_expr_type == TypeRecord::INT &&
-                 tok_type == TypeRecord::INT_ARRAY) ||
-                (cur_expr_type == TypeRecord::INT &&
-                 tok_type == TypeRecord::INT_PTR))
-            {
-                return;
-            }
-            else if ((cur_expr_type == TypeRecord::FLOAT &&
-                      tok_type == TypeRecord::FLOAT_ARRAY) ||
-                     (cur_expr_type == TypeRecord::FLOAT &&
-                      tok_type == TypeRecord::FLOAT_PTR))
-            {
-                return;
-            }
-        }
-        else
-	{
-            if (tok_type == cur_expr_type)
-                return;
-        }
-
-        std::cerr << "[Error] Token type of <" << _tok.getLiteral()
-                  << "> inconsistent within expression" << std::endl;
-        std::cerr << "[Line] " << cur_token.getLine() << "\n";
-        exit(0);
-    }
-
-    TypeRecord getTokenType(Token &_tok)
-    {
-        TypeRecord tok_type;
-        if (_tok.isTokenInt()) tok_type = TypeRecord::INT;
-        else if (_tok.isTokenFloat()) tok_type = TypeRecord::FLOAT;
-        else tok_type = TypeRecord::MAX;
-
-        // If the token is a variable, we need extract its recorded type
-        if (auto iter = local_var_type_tracker.find(_tok.getLiteral());
-                iter != local_var_type_tracker.end())
-        {
-            tok_type = iter->second;
-        }
-
-        // If the token is function name, we need to extract its
-        // recorded type.
-        if (auto iter = func_def_tracker.find(_tok.getLiteral());
-                iter != func_def_tracker.end())
-        {
-            tok_type = iter->second.ret_type;
-        }
-        
-        return tok_type;
-    }
-
-  protected:
-    std::unique_ptr<Lexer> lexer;
-
-  public:
-    Parser(const char* fn); 
-
-    void printStatements() { program.printStatements(); }
-
-    auto &getProgram() { return program; }
-
-  protected:
-    void parseProgram();
-    void advanceTokens();
-
-    std::unique_ptr<Statement> parseAssnStatement();
-
-    std::unique_ptr<Expression> parseArrayExpr();
-    std::unique_ptr<Expression> parseExpression();
-    std::unique_ptr<Expression> parseTerm(
-        std::unique_ptr<Expression> pending_left = nullptr);
-    std::unique_ptr<Expression> parseFactor();
-
-    std::unique_ptr<Expression> parseIndex();
-    std::unique_ptr<Expression> parseCall();
-
-  protected:
-    struct PerFuncRecord
-    {
-        PerFuncRecord() {}
-
-        PerFuncRecord(std::unordered_map<std::string,TypeRecord> &_map)
-        {
-            var_to_type = _map;
-        }
-
-        void print()
-        {
-            for (auto &[var, type] : var_to_type)
-            {
-                std::cout << "  " << var << "\n";;
-            }
-        }
-
-        TypeRecord getVarType(std::string &var_name)
-        {
-            auto iter = var_to_type.find(var_name);
-            assert(iter != var_to_type.end());
-            return iter->second;
-        }
-
-        std::unordered_map<std::string,TypeRecord> var_to_type;
-    };
-
-    std::unordered_map<std::string,PerFuncRecord> per_func_var_tracking;
-
 
   public:
     auto& getFuncArgTypes(std::string &func_name)
@@ -912,14 +901,95 @@ class Parser
         return iter->second.ret_type;
     }
 
-    TypeRecord getInFuncVarType(std::string &func_name, 
-                                std::string &var_name)
-    {
-        auto iter = per_func_var_tracking.find(func_name);
-        assert(iter != per_func_var_tracking.end());
+  protected:
+    /***************** Section two - strict type checking ******************/
 
-        return iter->second.getVarType(var_name);
+    // We force all the elements inside an EXPRESSION with the
+    // same type.
+    ValueType::Type cur_expr_type = ValueType::Type::MAX;
+    // strictTypeCheck v1 - check the token has the same type as the
+    // cur_expr_type.
+    void strictTypeCheck(Token &_tok, bool is_index_or_deref = false)
+    {
+        if (cur_expr_type == ValueType::Type::MAX) return;
+
+	ValueType::Type tok_type = getTokenType(_tok, is_index_or_deref);
+        if (tok_type == cur_expr_type)
+            return;
+
+        std::cerr << "[Error] Token type of <" << _tok.getLiteral()
+                  << "> inconsistent within expression" << std::endl;
+        std::cerr << "[Line] " << cur_token.getLine() << "\n";
+        exit(0);
     }
+
+    ValueType::Type getTokenType(Token &_tok, bool is_index_or_deref = false)
+    {
+        ValueType::Type tok_type;
+        if (_tok.isTokenInt()) tok_type = ValueType::Type::INT;
+        else if (_tok.isTokenFloat()) tok_type = ValueType::Type::FLOAT;
+        else tok_type = ValueType::Type::MAX;
+
+        // If the token is a variable, we need extract its recorded type
+        for (int i = local_vars_tracker.size() - 1;
+                 i >= 0;
+                 i--)
+        {
+            auto &tracker = local_vars_tracker[i];
+            if (auto iter = tracker->find(_tok.getLiteral());
+                    iter != tracker->end())
+            {
+                tok_type = iter->second;
+                break;
+            }
+        }
+        
+        // If the token is function name, we need to extract its
+        // recorded type.
+        if (auto iter = func_def_tracker.find(_tok.getLiteral());
+                iter != func_def_tracker.end())
+        {
+            tok_type = iter->second.ret_type;
+        }
+        
+        if (is_index_or_deref)
+        {
+            if (tok_type == ValueType::Type::INT_ARRAY)
+                tok_type = ValueType::Type::INT;
+            else if (tok_type == ValueType::Type::FLOAT_ARRAY)
+                tok_type = ValueType::Type::FLOAT;
+        }
+
+        return tok_type;
+    }
+
+  protected:
+    std::unique_ptr<Lexer> lexer;
+
+  public:
+    Parser(const char* fn); 
+
+    void printStatements() { program.printStatements(); }
+
+    auto &getProgram() { return program; }
+
+  protected:
+    void parseProgram();
+    void advanceTokens();
+
+    void parseStatement(std::string&,
+                        std::vector<std::shared_ptr<Statement>>&);
+    std::unique_ptr<Statement> parseAssnStatement();
+    std::unique_ptr<Statement> parseIfStatement(std::string&);
+
+    std::unique_ptr<Expression> parseExpression();
+    std::unique_ptr<Expression> parseTerm(
+        std::unique_ptr<Expression> pending_left = nullptr);
+    std::unique_ptr<Expression> parseFactor();
+
+    std::unique_ptr<Expression> parseArrayExpr();
+    std::unique_ptr<Expression> parseIndex();
+    std::unique_ptr<Expression> parseCall();
 };
 }
 #endif
