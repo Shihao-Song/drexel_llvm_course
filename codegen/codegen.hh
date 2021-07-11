@@ -51,7 +51,48 @@ class Codegen
     void print();
 
   protected:
-    std::unordered_map<std::string, Value *> local_var_tracking;
+    std::vector<std::unordered_map<std::string,
+                                   ValueType::Type>*> local_vars_ref;
+    std::vector<std::unordered_map<std::string,Value*>> local_vars_tracker;
+
+    void recordLocalVar(std::string& var_name, Value* reg)
+    {
+        auto &tracker = local_vars_tracker.back();
+        tracker.insert({var_name, reg});
+    }
+
+    ValueType::Type getValType(std::string& _var_name)
+    {
+        for (int i = local_vars_ref.size() - 1;
+                 i >= 0;
+                 i--)
+        {
+            auto &ref = local_vars_ref[i];
+
+            if (auto iter = ref->find(_var_name);
+                    iter != ref->end())
+            {
+                return iter->second;
+            }
+        }
+    }
+    
+    std::pair<bool,Value*> getReg(std::string& _var_name)
+    {
+        for (int i = local_vars_tracker.size() - 1;
+                 i >= 0;
+                 i--)
+        {
+            auto &tracker = local_vars_tracker[i];
+
+            if (auto iter = tracker.find(_var_name);
+                    iter != tracker.end())
+            {
+                return std::make_pair(true,iter->second);
+            }
+        }
+        return std::make_pair(false,nullptr);
+    }
 
     void funcGen(Statement *);
     void assnGen(std::string &,Statement *);
@@ -61,21 +102,21 @@ class Codegen
 
     Value* allocaForIden(std::string&,
                          std::string&,
-                         Parser::TypeRecord&,
+                         ValueType::Type&,
                          Expression*,
                          ArrayExpression*);
    
-    Value* exprGen(Parser::TypeRecord,Expression*);
+    Value* exprGen(ValueType::Type,Expression*);
 
-    void arrayExprGen(Parser::TypeRecord,
+    void arrayExprGen(ValueType::Type,
                       Value*,
                       ArrayExpression*);
 
-    Value* arithExprGen(Parser::TypeRecord,ArithExpression*);
+    Value* arithExprGen(ValueType::Type,ArithExpression*);
 
-    Value* literalExprGen(Parser::TypeRecord, LiteralExpression*);
+    Value* literalExprGen(ValueType::Type, LiteralExpression*);
 
-    Value* indexExprGen(Parser::TypeRecord, IndexExpression*);
+    Value* indexExprGen(ValueType::Type, IndexExpression*);
 
     Value* callExprGen(CallExpression*);
 };

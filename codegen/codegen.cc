@@ -18,7 +18,7 @@ void Codegen::gen()
     {
         assert(statement->isStatementFunc());
         funcGen(statement.get());
-        local_var_tracking.clear();
+
     }
 }
 
@@ -27,19 +27,22 @@ void Codegen::funcGen(Statement *_statement)
     FuncStatement *func_statement = 
         static_cast<FuncStatement*>(_statement);
 
+    // We need to extract the local variables reference
+    local_vars_ref.push_back(func_statement->getLocalVars());
+    local_vars_tracker.emplace_back();
+
     auto& func_name = func_statement->getFuncName();
     auto& func_args = func_statement->getFuncArgs();
     auto& func_codes = func_statement->getFuncCodes();
 
     // IR Gen
     // Prepare argument types
-    // TODO - introduce pointer
     std::vector<Type *> ir_gen_func_args;
     for (auto &arg : func_args)
     {
-        if (arg.isArgInt())
+        if (arg.getArgType() == ValueType::Type::INT)
             ir_gen_func_args.push_back(Type::getInt32Ty(*context));
-        else if (arg.isArgFloat())
+        else if (arg.getArgType() == ValueType::Type::FLOAT)
             ir_gen_func_args.push_back(Type::getFloatTy(*context));
         else
             assert(false && 
@@ -48,11 +51,11 @@ void Codegen::funcGen(Statement *_statement)
 
     // Prepare return type
     Type *ir_gen_ret_type;
-    if (func_statement->isRetTypeVoid())
+    if (func_statement->getRetType() == ValueType::Type::VOID)
         ir_gen_ret_type = Type::getVoidTy(*context);
-    else if (func_statement->isRetTypeInt())
+    else if (func_statement->getRetType() == ValueType::Type::INT)
         ir_gen_ret_type = Type::getInt32Ty(*context);
-    else if (func_statement->isRetTypeFloat()) 
+    else if (func_statement->getRetType() == ValueType::Type::FLOAT)
         ir_gen_ret_type = Type::getFloatTy(*context);
     else
         assert(false && 
@@ -79,7 +82,7 @@ void Codegen::funcGen(Statement *_statement)
     // Generate the code section
     // (1) Allocate space for arguments
     auto i = 0;
-    std::vector<Parser::TypeRecord> func_arg_types;
+    std::vector<ValueType::Type> func_arg_types;
     if (ir_gen_func->arg_size())
         func_arg_types = parser->getFuncArgTypes(func_name);
     for (auto &arg : ir_gen_func->args())
@@ -87,19 +90,18 @@ void Codegen::funcGen(Statement *_statement)
         Value *val = &arg;
         Value *reg;
 
-        // TODO - introduce pointer
-        if (func_arg_types[i] == Parser::TypeRecord::INT)
+        if (func_arg_types[i] == ValueType::Type::INT)
         {
             reg = builder->CreateAlloca(Type::getInt32Ty(*context));
             builder->CreateStore(val, reg);
 	}
-        else if (func_arg_types[i] == Parser::TypeRecord::FLOAT)
+        else if (func_arg_types[i] == ValueType::Type::FLOAT)
         {
             reg = builder->CreateAlloca(Type::getFloatTy(*context));
             builder->CreateStore(val, reg);
 	}
 
-        local_var_tracking[func_args[i].getLiteral()] = reg;
+        recordLocalVar(func_args[i].getLiteral(), reg);
         i++;
     }
 
@@ -124,7 +126,7 @@ void Codegen::funcGen(Statement *_statement)
         }
     }
 
-    if (func_statement->isRetTypeVoid())
+    if (func_statement->getRetType() == ValueType::Type::VOID)
     {
         Value *val = nullptr;
         builder->CreateRet(val);
@@ -132,6 +134,9 @@ void Codegen::funcGen(Statement *_statement)
 
     // Verify function
     verifyFunction(*ir_gen_func);
+
+    local_vars_tracker.pop_back();
+    local_vars_ref.pop_back();
 }
 
 void Codegen::assnGen(std::string &cur_func_name,
@@ -145,7 +150,7 @@ void Codegen::assnGen(std::string &cur_func_name,
 
     // Allocate for identifier
     std::string var_name;
-    Parser::TypeRecord var_type;
+    ValueType::Type var_type;
     Value *reg;
 
     ArrayExpression* array_info =
@@ -171,7 +176,7 @@ void Codegen::assnGen(std::string &cur_func_name,
 
 Value* Codegen::allocaForIden(std::string &func_name,
                               std::string &var_name, 
-                              Parser::TypeRecord &var_type,
+                              ValueType::Type &var_type,
                               Expression* iden,
                               ArrayExpression* array_info)
 {
@@ -184,35 +189,35 @@ Value* Codegen::allocaForIden(std::string &func_name,
             static_cast<LiteralExpression*>(iden);
 
         var_name = lit->getLiteral();
-        var_type = parser->getInFuncVarType(func_name, var_name);
+        var_type = getValType(var_name);
     }
     else if (iden->isExprIndex())
     {
         IndexExpression *index = static_cast<IndexExpression*>(iden);
 	
         var_name = index->getIden();
-        var_type = parser->getInFuncVarType(func_name, var_name);
+        var_type = getValType(var_name);
     }
 
     Value *reg;
-    if (auto iter = local_var_tracking.find(var_name);
-            iter == local_var_tracking.end())
+    if (auto [is_allocated, reg_base] = getReg(var_name);
+            !is_allocated)
     {
         // Allocating new variables, must be a literal iden
         assert(iden->isExprLiteral());
         LiteralExpression *lit = 
             static_cast<LiteralExpression*>(iden);
 
-        if (var_type == Parser::TypeRecord::INT)
+        if (var_type == ValueType::Type::INT)
         {
             reg = builder->CreateAlloca(Type::getInt32Ty(*context));
         }
-        else if (var_type == Parser::TypeRecord::FLOAT)
+        else if (var_type == ValueType::Type::FLOAT)
         {
             reg = builder->CreateAlloca(Type::getFloatTy(*context));
         }
-        else if (var_type == Parser::TypeRecord::INT_ARRAY || 
-                 var_type == Parser::TypeRecord::FLOAT_ARRAY)
+        else if (var_type == ValueType::Type::INT_ARRAY || 
+                 var_type == ValueType::Type::FLOAT_ARRAY)
         {
             assert(array_info != nullptr);
 
@@ -227,7 +232,7 @@ Value* Codegen::allocaForIden(std::string &func_name,
             auto num_ele_int = stoi(num_ele_lit->getLiteral());
 
             // Get array type
-            Type *ele_type = (var_type == Parser::TypeRecord::INT_ARRAY) ?
+            Type *ele_type = (var_type == ValueType::Type::INT_ARRAY) ?
                              Type::getInt32Ty(*context) :
                              Type::getFloatTy(*context);
 
@@ -241,22 +246,23 @@ Value* Codegen::allocaForIden(std::string &func_name,
                       << var_name << "\n";
             exit(0);
         }
-        local_var_tracking[var_name] = reg;
+
+        recordLocalVar(var_name, reg);
     }
     else
     {
         if (iden->isExprIndex())
         {
             IndexExpression *index = static_cast<IndexExpression*>(iden);
-            Value *idx = exprGen(Parser::TypeRecord::INT, index->getIndex());
+            Value *idx = exprGen(ValueType::Type::INT, index->getIndex());
             std::vector<Value*> idxs;
             idxs.push_back(ConstantInt::get(*context, APInt(32, 0)));
             idxs.push_back(idx);
-            reg = builder->CreateInBoundsGEP(iter->second, idxs);
+            reg = builder->CreateInBoundsGEP(reg_base, idxs);
         }
         else if (iden->isExprLiteral())
         {
-            reg = iter->second;
+            reg = reg_base;
         }
     }
 
@@ -291,8 +297,8 @@ void Codegen::builtinGen(Statement *_statement)
     assert(func_args.size() == 1);
     auto expr = func_args[0].get();
 
-    Parser::TypeRecord var_type = (func_name == "printVarInt") ? 
-        Parser::TypeRecord::INT : Parser::TypeRecord::FLOAT;
+    ValueType::Type var_type = (func_name == "printVarInt") ? 
+        ValueType::Type::INT : ValueType::Type::FLOAT;
 
     Value *val = exprGen(var_type, expr);
     
@@ -306,13 +312,13 @@ void Codegen::builtinGen(Statement *_statement)
     }
 }
 
-Value* Codegen::exprGen(Parser::TypeRecord _var_type, Expression *expr)
+Value* Codegen::exprGen(ValueType::Type _var_type, Expression *expr)
 {
-    Parser::TypeRecord var_type = _var_type;
-    if (_var_type == Parser::TypeRecord::INT_ARRAY)
-        var_type = Parser::TypeRecord::INT;
-    else if (_var_type == Parser::TypeRecord::FLOAT_ARRAY)
-        var_type = Parser::TypeRecord::FLOAT;
+    ValueType::Type var_type = _var_type;
+    if (_var_type == ValueType::Type::INT_ARRAY)
+        var_type = ValueType::Type::INT;
+    else if (_var_type == ValueType::Type::FLOAT_ARRAY)
+        var_type = ValueType::Type::FLOAT;
 
     Value *val = nullptr;
     if (expr->isExprLiteral())
@@ -362,22 +368,22 @@ void Codegen::retGen(std::string &cur_func_name,
 
     auto expr = ret->getRetVal();
 
-    Parser::TypeRecord ret_type = parser->getFuncRetType(cur_func_name);
+    ValueType::Type ret_type = parser->getFuncRetType(cur_func_name);
 
     Value *val = exprGen(ret_type, expr);
     builder->CreateRet(val);
 }
 
-void Codegen::arrayExprGen(Parser::TypeRecord array_type,
+void Codegen::arrayExprGen(ValueType::Type array_type,
                            Value *reg,
                            ArrayExpression* array_info)
 {
     // Determine element type
-    Parser::TypeRecord type;
-    if (array_type == Parser::TypeRecord::INT_ARRAY)
-        type = Parser::TypeRecord::INT;
-    else if (array_type == Parser::TypeRecord::FLOAT_ARRAY)
-        type = Parser::TypeRecord::FLOAT;
+    ValueType::Type type;
+    if (array_type == ValueType::Type::INT_ARRAY)
+        type = ValueType::Type::INT;
+    else if (array_type == ValueType::Type::FLOAT_ARRAY)
+        type = ValueType::Type::FLOAT;
     else
         assert(false);
 
@@ -405,7 +411,7 @@ void Codegen::arrayExprGen(Parser::TypeRecord array_type,
     }
 }
 
-Value* Codegen::arithExprGen(Parser::TypeRecord type, 
+Value* Codegen::arithExprGen(ValueType::Type type, 
                              ArithExpression* arith)
 {
     Value *val_left = nullptr;
@@ -469,35 +475,35 @@ Value* Codegen::arithExprGen(Parser::TypeRecord type,
     switch (opr) 
     {
         case '+':
-            if (type == Parser::TypeRecord::INT)
+            if (type == ValueType::Type::INT)
                 return builder->CreateAdd(val_left, val_right);
-            else if (type == Parser::TypeRecord::FLOAT)
+            else if (type == ValueType::Type::FLOAT)
                 return builder->CreateFAdd(val_left, val_right);
         case '-':
-            if (type == Parser::TypeRecord::INT)
+            if (type == ValueType::Type::INT)
                 return builder->CreateSub(val_left, val_right);
-            else if (type == Parser::TypeRecord::FLOAT)
+            else if (type == ValueType::Type::FLOAT)
                 return builder->CreateFSub(val_left, val_right);
         case '*':
-            if (type == Parser::TypeRecord::INT)
+            if (type == ValueType::Type::INT)
                 return builder->CreateMul(val_left, val_right);
-            else if (type == Parser::TypeRecord::FLOAT)
+            else if (type == ValueType::Type::FLOAT)
                 return builder->CreateFMul(val_left, val_right);
         case '/':
-            if (type == Parser::TypeRecord::INT)
+            if (type == ValueType::Type::INT)
                 return builder->CreateSDiv(val_left, val_right);
-            else if (type == Parser::TypeRecord::FLOAT)
+            else if (type == ValueType::Type::FLOAT)
                 return builder->CreateFDiv(val_left, val_right);
     }
 }
 
-Value* Codegen::literalExprGen(Parser::TypeRecord type, 
+Value* Codegen::literalExprGen(ValueType::Type type, 
                                LiteralExpression* lit)
 {
     Value *val;
-    auto iter = local_var_tracking.find(lit->getLiteral());
+    auto [is_allocated, reg_val] = getReg(lit->getLiteral());
 
-    if (iter == local_var_tracking.end())
+    if (!is_allocated)
     {
         assert((lit->isLiteralInt() || 
                 lit->isLiteralFloat()));
@@ -514,16 +520,16 @@ Value* Codegen::literalExprGen(Parser::TypeRecord type,
     }
     else
     {
-        if (type == Parser::TypeRecord::INT)
+        if (type == ValueType::Type::INT)
         {
             val = builder->CreateLoad(Type::getInt32Ty(*context),
-                                      iter->second);
+                                      reg_val);
             
         }
-        else if (type == Parser::TypeRecord::FLOAT)
+        else if (type == ValueType::Type::FLOAT)
         {
             val = builder->CreateLoad(Type::getFloatTy(*context),
-                                      iter->second);
+                                      reg_val);
             
         }
     }
@@ -531,23 +537,23 @@ Value* Codegen::literalExprGen(Parser::TypeRecord type,
     return val;
 }
 
-Value* Codegen::indexExprGen(Parser::TypeRecord type, 
+Value* Codegen::indexExprGen(ValueType::Type type, 
                              IndexExpression* index)
 {
-    auto arr = local_var_tracking.find(index->getIden());
-    assert(arr != local_var_tracking.end());
+    auto [is_allocated, reg_val] = getReg(index->getIden());
+    assert(is_allocated);
 
-    Value *idx = exprGen(Parser::TypeRecord::INT, index->getIndex());
+    Value *idx = exprGen(ValueType::Type::INT, index->getIndex());
 
     std::vector<Value*> idxs;
     idxs.push_back(ConstantInt::get(*context, APInt(32, 0)));
     idxs.push_back(idx);
-    auto base = builder->CreateInBoundsGEP(arr->second, idxs);
+    auto base = builder->CreateInBoundsGEP(reg_val, idxs);
 
     Value *val;
-    if (type == Parser::TypeRecord::INT)
+    if (type == ValueType::Type::INT)
         val = builder->CreateLoad(Type::getInt32Ty(*context), base);
-    else if (type == Parser::TypeRecord::FLOAT)
+    else if (type == ValueType::Type::FLOAT)
         val = builder->CreateLoad(Type::getFloatTy(*context), base);
 
     return val;

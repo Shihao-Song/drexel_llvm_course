@@ -565,7 +565,9 @@ class FuncStatement : public Statement
         codes = std::move(_statement.codes);
         local_vars = _statement.local_vars;
     }
-   
+  
+    auto getLocalVars() {return &local_vars; }
+
     auto getRetType() { return func_type; }
 
     auto &getFuncName() { return iden->getLiteral(); }
