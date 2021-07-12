@@ -687,6 +687,11 @@ class Condition
         , comp_type(_cond.comp_type)
     {}
 
+    auto getType() { return comp_type; }
+    auto &getOpr() { return opr_type_str; }
+    auto getLeft() { return left.get(); }
+    auto getRight() { return right.get(); }
+
     void printStatement();
 };
 
@@ -728,6 +733,12 @@ class IfStatement : public Statement
         , not_taken_local_vars(_if.not_taken_local_vars)
     {}
 
+    auto getCond() { return cond.get(); }
+    auto &getTakenBlock() { return taken_block; }
+    auto &getNotTakenBlock() { return not_taken_block; }
+    auto getTakenBlockVars() { return &taken_local_vars; }
+    auto getNotTakenBlockVars() { return &not_taken_local_vars; }
+
     void printStatement() override;
 };
 
@@ -767,6 +778,12 @@ class ForStatement : public Statement
         , block(std::move(_for.block))
         , block_local_vars(_for.block_local_vars)
     {}
+
+    auto getStart() { return start.get(); }
+    auto getEnd() { return end.get(); }
+    auto getStep() { return step.get(); }
+    auto &getBlock() { return block; }
+    auto getBlockVars() { return &block_local_vars; }
 
     void printStatement() override;
 };
@@ -869,12 +886,18 @@ class Parser
     }
     std::pair<bool,ValueType::Type> isVarAlreadyDefined(Token &_tok)
     {
-        auto &tracker = local_vars_tracker.back();
-        if (auto iter = tracker->find(_tok.getLiteral());
-                iter != tracker->end())
+        for (int i = local_vars_tracker.size() - 1;
+                 i >= 0;
+                 i--)
         {
-            return std::make_pair(true, iter->second);
+            auto &tracker = local_vars_tracker[i];
+            if (auto iter = tracker->find(_tok.getLiteral());
+                    iter != tracker->end())
+            {
+                return std::make_pair(true, iter->second);
+            }
         }
+
         return std::make_pair(false, ValueType::Type::MAX);
     }
 

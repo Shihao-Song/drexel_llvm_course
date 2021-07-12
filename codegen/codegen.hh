@@ -94,14 +94,19 @@ class Codegen
         return std::make_pair(false,nullptr);
     }
 
+    void statementGen(std::string&, Statement*);
+
     void funcGen(Statement *);
-    void assnGen(std::string &,Statement *);
+    void assnGen(Statement *);
     void builtinGen(Statement *);
     void callGen(Statement *);
     void retGen(std::string &,Statement *);
 
+    Value* condGen(Condition*);
+    void ifGen(std::string&,Statement *);
+    void forGen(std::string&,Statement *);
+
     Value* allocaForIden(std::string&,
-                         std::string&,
                          ValueType::Type&,
                          Expression*,
                          ArrayExpression*);

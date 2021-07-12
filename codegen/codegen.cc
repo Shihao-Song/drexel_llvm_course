@@ -108,22 +108,7 @@ void Codegen::funcGen(Statement *_statement)
     // (2) Rest of the codes
     for (auto &statement : func_codes)
     {
-        if (statement->isStatementAssn())
-        {
-            assnGen(func_name, statement.get());
-        }
-        else if (statement->isStatementBuiltinCall())
-        {
-            builtinGen(statement.get());
-        }
-        else if (statement->isStatementRet())
-        {
-            retGen(func_name, statement.get());
-        }
-        else if (statement->isStatementNormalCall())
-        {
-            callGen(statement.get());
-        }
+        statementGen(func_name, statement.get());
     }
 
     if (func_statement->getRetType() == ValueType::Type::VOID)
@@ -139,8 +124,36 @@ void Codegen::funcGen(Statement *_statement)
     local_vars_ref.pop_back();
 }
 
-void Codegen::assnGen(std::string &cur_func_name,
-                      Statement *_statement)
+void Codegen::statementGen(std::string &func_name,
+                           Statement* statement)
+{
+    if (statement->isStatementAssn())
+    {
+        assnGen(statement);
+    }
+    else if (statement->isStatementBuiltinCall())
+    {
+        builtinGen(statement);
+    }
+    else if (statement->isStatementRet())
+    {
+        retGen(func_name, statement);
+    }
+    else if (statement->isStatementNormalCall())
+    {
+        callGen(statement);
+    }
+    else if (statement->isStatementIf())
+    {
+        ifGen(func_name, statement);
+    }
+    else if (statement->isStatementFor())
+    {
+        forGen(func_name, statement);
+    }
+}
+
+void Codegen::assnGen(Statement *_statement)
 {
     AssnStatement* assn_statement = 
         static_cast<AssnStatement*>(_statement);
@@ -158,7 +171,7 @@ void Codegen::assnGen(std::string &cur_func_name,
         static_cast<ArrayExpression*>(expr) :
         nullptr;
 
-    reg = allocaForIden(cur_func_name, var_name, var_type, 
+    reg = allocaForIden(var_name, var_type, 
                         iden, array_info);
 
     // Extract assigned value    
@@ -174,8 +187,7 @@ void Codegen::assnGen(std::string &cur_func_name,
     }
 }
 
-Value* Codegen::allocaForIden(std::string &func_name,
-                              std::string &var_name, 
+Value* Codegen::allocaForIden(std::string &var_name, 
                               ValueType::Type &var_type,
                               Expression* iden,
                               ArrayExpression* array_info)
@@ -312,6 +324,218 @@ void Codegen::builtinGen(Statement *_statement)
     }
 }
 
+void Codegen::callGen(Statement *_statement)
+{
+     CallStatement *built_in_statement = 
+        static_cast<CallStatement*>(_statement);
+
+    auto call_expr = built_in_statement->getCallExpr();
+    assert(call_expr->isExprCall());
+
+    callExprGen(call_expr);
+}
+
+void Codegen::retGen(std::string &cur_func_name,
+                     Statement *_statement)
+{
+    RetStatement* ret = static_cast<RetStatement*>(_statement);
+
+    auto expr = ret->getRetVal();
+
+    ValueType::Type ret_type = parser->getFuncRetType(cur_func_name);
+
+    Value *val = exprGen(ret_type, expr);
+    builder->CreateRet(val);
+}
+
+Value* Codegen::condGen(Condition *cond)
+{
+    auto var_type = cond->getType();
+
+    Value *left = exprGen(var_type, cond->getLeft());
+    Value *right = exprGen(var_type, cond->getRight());
+
+    Value* eval = nullptr;
+    auto opr = cond->getOpr();
+    if (opr == "==")
+    {
+        if (var_type == ValueType::Type::INT)
+        {
+            eval = builder->CreateICmpEQ(left, right);
+        }
+        else if (var_type == ValueType::Type::FLOAT)
+        {
+            eval = builder->CreateFCmpOEQ(left, right);
+        }
+    }
+    else if (opr == "!=")
+    {
+        if (var_type == ValueType::Type::INT)
+        {
+            eval = builder->CreateICmpNE(left, right);
+        }
+        else if (var_type == ValueType::Type::FLOAT)
+        {	
+            eval = builder->CreateFCmpONE(left, right);
+        }
+    }
+    else if (opr == ">")
+    {
+        if (var_type == ValueType::Type::INT)
+        {
+            eval = builder->CreateICmpSGT(left, right);
+        }
+        else if (var_type == ValueType::Type::FLOAT)
+        {
+            eval = builder->CreateFCmpOGT(left, right);
+        }
+    }
+    else if (opr == ">=")
+    {
+        if (var_type == ValueType::Type::INT)
+        {
+            eval = builder->CreateICmpSGE(left, right);
+        }
+        else if (var_type == ValueType::Type::FLOAT)
+        {
+            eval = builder->CreateFCmpOGE(left, right);
+        }
+    }
+    else if (opr == "<")
+    {
+        if (var_type == ValueType::Type::INT)
+        {
+            eval = builder->CreateICmpSLT(left, right);
+        }
+        else if (var_type == ValueType::Type::FLOAT)
+        {
+            eval = builder->CreateFCmpOLT(left, right);
+        }
+    }
+    else if (opr == "<=")
+    {
+        if (var_type == ValueType::Type::INT)
+        {
+            eval = builder->CreateICmpSLT(left, right);
+        }
+        else if (var_type == ValueType::Type::FLOAT)
+        {
+            eval = builder->CreateFCmpOLT(left, right);
+        }
+    }
+
+    assert(eval != nullptr);
+    return eval;
+}
+
+void Codegen::ifGen(std::string& parent_func_name, Statement *_statement)
+{
+    IfStatement *if_s = 
+        static_cast<IfStatement*>(_statement);
+
+    auto cond = condGen(if_s->getCond());
+    auto &taken_block = if_s->getTakenBlock();
+    auto &not_taken_block = if_s->getNotTakenBlock();
+
+    // Build basic blocks for paths
+    Function *func = builder->GetInsertBlock()->getParent();
+    BasicBlock *taken_BB =
+        BasicBlock::Create(*context, "", func);
+
+    BasicBlock *not_taken_BB = (not_taken_block.size()) ?
+                               BasicBlock::Create(*context, "", func) :
+                               nullptr;
+
+    BasicBlock *merge_BB = BasicBlock::Create(*context, "", func);
+
+    if (not_taken_BB != nullptr)
+    {
+        builder->CreateCondBr(cond, taken_BB, not_taken_BB);
+    }
+    else
+    {
+        builder->CreateCondBr(cond, taken_BB, merge_BB);
+    }
+
+    // Build the taken path
+    builder->SetInsertPoint(taken_BB);
+    local_vars_ref.push_back(if_s->getTakenBlockVars());
+    local_vars_tracker.emplace_back();
+    for (auto &statement : taken_block)
+    {
+        statementGen(parent_func_name, statement.get());
+    }
+    builder->CreateBr(merge_BB);
+    local_vars_ref.pop_back();
+    local_vars_tracker.pop_back();
+
+    // Build the not
+    if (not_taken_BB != nullptr)
+    {
+        builder->SetInsertPoint(not_taken_BB);
+        local_vars_ref.push_back(if_s->getNotTakenBlockVars());
+        local_vars_tracker.emplace_back();
+        for (auto &statement : not_taken_block)
+        {
+            statementGen(parent_func_name, statement.get());
+        }
+        builder->CreateBr(merge_BB);
+        local_vars_ref.pop_back();
+        local_vars_tracker.pop_back();
+    }
+
+    builder->SetInsertPoint(merge_BB);
+}
+
+void Codegen::forGen(std::string& parent_func_name, Statement *_statement)
+{
+    ForStatement *for_s = 
+        static_cast<ForStatement*>(_statement);
+
+    local_vars_ref.push_back(for_s->getBlockVars());
+    local_vars_tracker.emplace_back();
+
+    // Gen start
+    assnGen(for_s->getStart());
+
+    // Build basic blocks for paths
+    Function *func = builder->GetInsertBlock()->getParent();
+
+    BasicBlock *check_BB =
+        BasicBlock::Create(*context, "", func);
+
+    BasicBlock *body_BB =
+        BasicBlock::Create(*context, "", func);
+
+    BasicBlock *merge_BB =
+        BasicBlock::Create(*context, "", func);
+
+    // Gen end (condition)
+    builder->CreateBr(check_BB);
+    builder->SetInsertPoint(check_BB);
+
+    auto end_cond = condGen(for_s->getEnd());
+    builder->CreateCondBr(end_cond, body_BB, merge_BB);
+    
+    // Gen boday
+    builder->SetInsertPoint(body_BB);
+    auto block = for_s->getBlock();
+    for (auto code : block)
+    {
+        statementGen(parent_func_name, code.get());
+    }
+
+    // Gen step
+    assnGen(for_s->getStep());
+    builder->CreateBr(check_BB);
+
+    // Loop end
+    builder->SetInsertPoint(merge_BB);
+
+    local_vars_ref.pop_back();
+    local_vars_tracker.pop_back();
+}
+
 Value* Codegen::exprGen(ValueType::Type _var_type, Expression *expr)
 {
     ValueType::Type var_type = _var_type;
@@ -350,28 +574,44 @@ Value* Codegen::exprGen(ValueType::Type _var_type, Expression *expr)
     return val;
 }
 
-void Codegen::callGen(Statement *_statement)
+Value* Codegen::literalExprGen(ValueType::Type type, 
+                               LiteralExpression* lit)
 {
-     CallStatement *built_in_statement = 
-        static_cast<CallStatement*>(_statement);
+    Value *val;
+    auto [is_allocated, reg_val] = getReg(lit->getLiteral());
 
-    auto call_expr = built_in_statement->getCallExpr();
-    assert(call_expr->isExprCall());
+    if (!is_allocated)
+    {
+        assert((lit->isLiteralInt() || 
+                lit->isLiteralFloat()));
 
-    callExprGen(call_expr);
-}
-
-void Codegen::retGen(std::string &cur_func_name,
-                     Statement *_statement)
-{
-    RetStatement* ret = static_cast<RetStatement*>(_statement);
-
-    auto expr = ret->getRetVal();
-
-    ValueType::Type ret_type = parser->getFuncRetType(cur_func_name);
-
-    Value *val = exprGen(ret_type, expr);
-    builder->CreateRet(val);
+        auto val_str = lit->getLiteral();
+        if (lit->isLiteralInt())
+        {
+            val = ConstantInt::get(*context, APInt(32, stoi(val_str)));
+        }
+        else if (lit->isLiteralFloat())
+        {
+            val = ConstantFP::get(*context, APFloat(stof(val_str)));
+        }
+    }
+    else
+    {
+        if (type == ValueType::Type::INT)
+        {
+            val = builder->CreateLoad(Type::getInt32Ty(*context),
+                                      reg_val);
+            
+        }
+        else if (type == ValueType::Type::FLOAT)
+        {
+            val = builder->CreateLoad(Type::getFloatTy(*context),
+                                      reg_val);
+            
+        }
+    }
+    assert(val != nullptr);
+    return val;
 }
 
 void Codegen::arrayExprGen(ValueType::Type array_type,
@@ -495,46 +735,6 @@ Value* Codegen::arithExprGen(ValueType::Type type,
             else if (type == ValueType::Type::FLOAT)
                 return builder->CreateFDiv(val_left, val_right);
     }
-}
-
-Value* Codegen::literalExprGen(ValueType::Type type, 
-                               LiteralExpression* lit)
-{
-    Value *val;
-    auto [is_allocated, reg_val] = getReg(lit->getLiteral());
-
-    if (!is_allocated)
-    {
-        assert((lit->isLiteralInt() || 
-                lit->isLiteralFloat()));
-
-        auto val_str = lit->getLiteral();
-        if (lit->isLiteralInt())
-        {
-            val = ConstantInt::get(*context, APInt(32, stoi(val_str)));
-        }
-        else if (lit->isLiteralFloat())
-        {
-            val = ConstantFP::get(*context, APFloat(stof(val_str)));
-        }
-    }
-    else
-    {
-        if (type == ValueType::Type::INT)
-        {
-            val = builder->CreateLoad(Type::getInt32Ty(*context),
-                                      reg_val);
-            
-        }
-        else if (type == ValueType::Type::FLOAT)
-        {
-            val = builder->CreateLoad(Type::getFloatTy(*context),
-                                      reg_val);
-            
-        }
-    }
-    assert(val != nullptr);
-    return val;
 }
 
 Value* Codegen::indexExprGen(ValueType::Type type, 
