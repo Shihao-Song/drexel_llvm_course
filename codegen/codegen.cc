@@ -788,7 +788,7 @@ Value* Codegen::callExprGen(CallExpression *call)
 
 void Codegen::print()
 {
-    module->print(errs(), nullptr);
+    // module->print(errs(), nullptr);
     std::error_code EC;
     raw_fd_ostream out(out_fn, EC);
     WriteBitcodeToFile(*module, out);
