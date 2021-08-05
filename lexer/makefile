@@ -1,6 +1,6 @@
-ROOT	:= ../../drexel_llvm_course
+ROOT	:= ..
 SOURCE	:= $(ROOT)/lexer/main.cc $(ROOT)/lexer/lexer.cc
-CC	:= g++
+CC	:= clang++
 FLAGS	:= -O3 -std=c++17 -w 
 FLAGS	+= -I $(ROOT)
 TARGET	:= lexer
