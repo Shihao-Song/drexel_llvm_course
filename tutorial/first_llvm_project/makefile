@@ -1,5 +1,5 @@
 LLVM_CONFIG	:= llvm-config
-LDFLAGS		:= $(shell $(LLVM_CONFIG) --ldflags) $(shell $(LLVM_CONFIG) --libs bitreader core support) -lpthread
+LDFLAGS		:= $(shell $(LLVM_CONFIG) --ldflags) $(shell $(LLVM_CONFIG) --libs bitreader core support) -lpthread -ltinfo
 COMMON_FLAGS	:= -Wall -Wextra
 CXXFLAGS	:= $(COMMON_FLAGS) $(shell $(LLVM_CONFIG) --cxxflags)
 CPPFLAGS	:= $(shell $(LLVM_CONFIG) --cppflags)
