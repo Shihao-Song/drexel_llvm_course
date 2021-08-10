@@ -56,7 +56,8 @@ struct Token
         TOKEN_SEMICOLON,
 
         // lparen - indicates the token is "("
-	TOKEN_LPAREN,
+
+        TOKEN_LPAREN,
         // rparen - indicates the token is ")"
         TOKEN_RPAREN,
         // lbrace - indicates the token is "{"
