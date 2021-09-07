@@ -10,73 +10,97 @@
 
 namespace Frontend
 {
+/*
+ * Token struct definition
+ * */
 struct Token
 {
+    /*
+     * Define token types
+     * */
     enum class TokenType : int
     {
+        // illegal - indicates any unsupported token types
         TOKEN_ILLEGAL,
+        // EOF - indicates the end of all the tokens
         TOKEN_EOF,
 
-        // Identifiers + literals
-        TOKEN_IDENTIFIER, // i.e., x, y, i, j, ...
-        TOKEN_INT, // i.e., 1, 2, 3, 4, ...
-        TOKEN_FLOAT, // i.e., 1.1, 1.2, ...
+        // identifier - indicates the token is a variable/function name
+        TOKEN_IDENTIFIER,
+        // int - indicates the token is an integer number
+        TOKEN_INT,
+        // float - indicates the token is a float number
+        TOKEN_FLOAT,
 
-        // Operators
+        // assign - indicates the token is "="
         TOKEN_ASSIGN,
+        // plus - indicates the token is "+"
         TOKEN_PLUS,
+        // minus - indicates the token is "-"
         TOKEN_MINUS,
+        // bang - indicates the token is "!"
         TOKEN_BANG,
+        // asterisk - indicates the token is "*"
         TOKEN_ASTERISK,
+        // slash - indicates the token is "/"
         TOKEN_SLASH,
 
+        // LT - indicates the token is "<"
         TOKEN_LT,
+        // GT - indicates the token is ">"
         TOKEN_GT,
 
-        // Delimiters
+        // comma - indicates the token is ","
         TOKEN_COMMA,
+        // semicolon - indicates the token is ";"
         TOKEN_SEMICOLON,
 
+        // lparen - indicates the token is "("
 	TOKEN_LPAREN,
+        // rparen - indicates the token is ")"
         TOKEN_RPAREN,
+        // lbrace - indicates the token is "{"
         TOKEN_LBRACE,
+        // rbrace - indicates the token is "}"
         TOKEN_RBRACE,
+        // lbracket - indicates the token is "["
         TOKEN_LBRACKET,
+        // rbracket - indicates the token is "]"
         TOKEN_RBRACKET,
 
-        // Keywords
+        // return - indicates the token is "return"
         TOKEN_RETURN,
 
-        // For function/argument type
         // DES - description
+        // des_void - indicates the token is "void"
         TOKEN_DES_VOID,
+        // des_int - indicates the token is "int"
         TOKEN_DES_INT,
+        // des_float - indicates the token is "float"
         TOKEN_DES_FLOAT,
 
-        // Control flow
+        // if - indicates the token is "if"
         TOKEN_IF,
+        // else - indicates the token "else"
         TOKEN_ELSE,
+        // for - indicates the token is "for"
         TOKEN_FOR
     } type = TokenType::TOKEN_ILLEGAL;
 
+    // literal - container of the token value
     std::string literal = "";
 
+    // default constructor
     Token() {}
 
-    Token(const Token &_tok)
-        : type(_tok.type)
-        , literal(_tok.literal)
-        , line(_tok.line)
-    {
-    
-    }
-
+    // alternative constructor
     Token(TokenType _type)
         : type(_type)
     {
     
     }
 
+    // alternative constructor
     Token(TokenType _type, std::string &_val)
         : type(_type)
         , literal(_val)
@@ -84,6 +108,7 @@ struct Token
     
     }
 
+    // alternative constructor
     Token(TokenType _type, 
           std::string &_val, 
           std::shared_ptr<std::string> &_line)
@@ -94,6 +119,16 @@ struct Token
     
     }
 
+    // copy constructor
+    Token(const Token &_tok)
+        : type(_tok.type)
+        , literal(_tok.literal)
+        , line(_tok.line)
+    {
+    
+    }
+
+    // return token type string (implemented in lexer.cc)
     std::string prinTokenType();
 
     auto &getLiteral() { return literal; }

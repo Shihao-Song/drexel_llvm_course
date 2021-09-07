@@ -159,7 +159,7 @@ void Lexer::parseLine(std::string &line)
     // Extract all the tokens from the current line
     for (auto iter = line.begin(); iter != line.end(); iter++)
     {
-        // (1) skip the space/tab
+        // (1) skip space, tab, and comments
         if (*iter == ' ' || *iter == '\t') continue;
         if (*iter == '/'  && *(iter + 1) == '/') break;
 
@@ -173,8 +173,7 @@ void Lexer::parseLine(std::string &line)
             std::string literal = cur_token_str;
             Token::TokenType type = sep_iter->second;
             Token _tok(type, literal, cur_line);
-            // std::cout << _tok.prinTokenType() << " | "
-            //           << _tok.getVal() << "\n";
+
             toks_per_line.push(_tok);
                 
             continue;
@@ -217,8 +216,7 @@ void Lexer::parseLine(std::string &line)
             std::string literal = cur_token_str;
             Token::TokenType type = k_iter->second;
             Token _tok(type, literal, cur_line);
-            // std::cout << _tok.prinTokenType() << " | "
-            //           << _tok.getVal() << "\n";
+
             toks_per_line.push(_tok);
         }
         else
@@ -226,8 +224,7 @@ void Lexer::parseLine(std::string &line)
 	    std::string literal = cur_token_str;
             Token::TokenType type = Token::TokenType::TOKEN_IDENTIFIER;
             Token _tok(type, literal, cur_line);
-            // std::cout << _tok.prinTokenType() << " | "
-            //           << _tok.getVal() << "\n";
+
             toks_per_line.push(_tok);
         }
     }
