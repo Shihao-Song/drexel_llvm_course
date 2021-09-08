@@ -1,3 +1,5 @@
+// Header file for lexer.cc
+
 #ifndef __LEXER_HH__
 #define __LEXER_HH__
 
@@ -12,8 +14,8 @@ namespace Frontend {
 
 // Token struct definition
 struct Token {
+     
      // Define token types
-    
     enum class TokenType : int {
         // illegal - indicates any unsupported token types
         TOKEN_ILLEGAL,

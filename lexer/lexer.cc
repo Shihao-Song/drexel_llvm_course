@@ -1,3 +1,11 @@
+/* Lexer implementation.
+
+ * Author: Shihao Song
+ * Modified by: Naga Kandasamy
+ * Date: September 8, 2021 
+
+*/
+
 #include "lexer/lexer.hh"
 
 #include <cassert>
@@ -5,10 +13,11 @@
 
 namespace Frontend
 {
+
+// Return token type as string
 std::string Token::prinTokenType()
 {
-    switch(type)
-    {
+    switch (type) {
         case TokenType::TOKEN_ILLEGAL:
             return std::string("ILLEGAL");
         case TokenType::TOKEN_EOF:
@@ -72,6 +81,7 @@ std::string Token::prinTokenType()
     }
 }
 
+// Constructor 
 Lexer::Lexer(const char* fn)
 {
     code.open(fn);
@@ -107,12 +117,13 @@ Lexer::Lexer(const char* fn)
     keywords.insert({"for", Token::TokenType::TOKEN_FOR});
 }
 
+// Return a token 
 bool Lexer::getToken(Token &tok)
 {
     // Check if toks_per_line has elements within it
     if (toks_per_line.size()) {
         tok = toks_per_line.front(); // Access the first element in queue
-        toks_per_line.pop(); // Remove the first element from queue
+        toks_per_line.pop();         // Remove the first element from queue
         return true;
     }
 
@@ -126,7 +137,7 @@ bool Lexer::getToken(Token &tok)
         return false;
     }
 
-    // Parse the line
+    // Parse line
     parseLine(line);
 
     // Skip empty lines
@@ -141,12 +152,12 @@ bool Lexer::getToken(Token &tok)
     }
 
     assert(toks_per_line.size() != 0);
-    // std::cout << "\n" << line << "\n";
     tok = toks_per_line.front();
     toks_per_line.pop();
     return true;
 }
 
+// Tokenize line 
 void Lexer::parseLine(std::string &line)
 {
     std::shared_ptr<std::string> cur_line = 
