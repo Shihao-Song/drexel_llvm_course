@@ -1,4 +1,4 @@
-BIN_DIR		:= ~/Documents/llvm/llvm-install/bin/
+BIN_DIR		:= ~/Documents/llvm-install/bin/
 LLVM_CONFIG	:= $(BIN_DIR)llvm-config
 LDFLAGS		:= $(shell $(LLVM_CONFIG) --ldflags) $(shell $(LLVM_CONFIG) --libs bitreader core support) -lpthread -ltinfo
 COMMON_FLAGS	:= -Wall -Wextra
