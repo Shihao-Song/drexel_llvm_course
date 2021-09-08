@@ -8,30 +8,23 @@
 #include <string>
 #include <unordered_map>
 
-namespace Frontend
-{
-/*
- * Token struct definition
- * */
-struct Token
-{
-    /*
-     * Define token types
-     * */
-    enum class TokenType : int
-    {
+namespace Frontend {
+
+// Token struct definition
+struct Token {
+     // Define token types
+    
+    enum class TokenType : int {
         // illegal - indicates any unsupported token types
         TOKEN_ILLEGAL,
         // EOF - indicates the end of all the tokens
         TOKEN_EOF,
-
         // identifier - indicates the token is a variable/function name
         TOKEN_IDENTIFIER,
         // int - indicates the token is an integer number
         TOKEN_INT,
         // float - indicates the token is a float number
         TOKEN_FLOAT,
-
         // assign - indicates the token is "="
         TOKEN_ASSIGN,
         // plus - indicates the token is "+"
@@ -44,19 +37,15 @@ struct Token
         TOKEN_ASTERISK,
         // slash - indicates the token is "/"
         TOKEN_SLASH,
-
         // LT - indicates the token is "<"
         TOKEN_LT,
         // GT - indicates the token is ">"
         TOKEN_GT,
-
         // comma - indicates the token is ","
         TOKEN_COMMA,
         // semicolon - indicates the token is ";"
         TOKEN_SEMICOLON,
-
         // lparen - indicates the token is "("
-
         TOKEN_LPAREN,
         // rparen - indicates the token is ")"
         TOKEN_RPAREN,
@@ -68,10 +57,8 @@ struct Token
         TOKEN_LBRACKET,
         // rbracket - indicates the token is "]"
         TOKEN_RBRACKET,
-
         // return - indicates the token is "return"
         TOKEN_RETURN,
-
         // DES - description
         // des_void - indicates the token is "void"
         TOKEN_DES_VOID,
@@ -79,7 +66,6 @@ struct Token
         TOKEN_DES_INT,
         // des_float - indicates the token is "float"
         TOKEN_DES_FLOAT,
-
         // if - indicates the token is "if"
         TOKEN_IF,
         // else - indicates the token "else"
@@ -179,7 +165,7 @@ struct Token
 class Lexer
 {
   protected:
-    // define seperators
+    // define separators
     std::unordered_map<char, Token::TokenType> seps;
     // define keywords
     std::unordered_map<std::string, Token::TokenType> keywords;

@@ -77,7 +77,7 @@ Lexer::Lexer(const char* fn)
     code.open(fn);
     assert(code.good());
 
-    // fill pre-defined seperators
+    // Fill map with pre-defined separators
     seps.insert({'=', Token::TokenType::TOKEN_ASSIGN});
     seps.insert({'+', Token::TokenType::TOKEN_PLUS});
     seps.insert({'-', Token::TokenType::TOKEN_MINUS});
@@ -109,11 +109,10 @@ Lexer::Lexer(const char* fn)
 
 bool Lexer::getToken(Token &tok)
 {
-    // Check if toks_per_line is empty or not
-    if (toks_per_line.size())
-    {
-        tok = toks_per_line.front();
-        toks_per_line.pop();
+    // Check if toks_per_line has elements within it
+    if (toks_per_line.size()) {
+        tok = toks_per_line.front(); // Access the first element in queue
+        toks_per_line.pop(); // Remove the first element from queue
         return true;
     }
 
@@ -122,8 +121,7 @@ bool Lexer::getToken(Token &tok)
     getline(code, line);
 
     // Return if EOF
-    if (code.eof())
-    {
+    if (code.eof()) {
         tok = Token(Token::TokenType::TOKEN_EOF);
         return false;
     }
@@ -132,11 +130,9 @@ bool Lexer::getToken(Token &tok)
     parseLine(line);
 
     // Skip empty lines
-    while (toks_per_line.size() == 0)
-    {
+    while (toks_per_line.size() == 0) {
         getline(code, line);
-        if (code.eof())
-        {
+        if (code.eof()) {
             tok = Token(Token::TokenType::TOKEN_EOF);
             return false;
         }
@@ -156,20 +152,18 @@ void Lexer::parseLine(std::string &line)
     std::shared_ptr<std::string> cur_line = 
         std::make_shared<std::string>(line);
 
-    // Extract all the tokens from the current line
-    for (auto iter = line.begin(); iter != line.end(); iter++)
-    {
-        // (1) skip space, tab, and comments
+    // Tokenize current line
+    for (auto iter = line.begin(); iter != line.end(); iter++) {
+        // Skip space, tab, and comments
         if (*iter == ' ' || *iter == '\t') continue;
         if (*iter == '/'  && *(iter + 1) == '/') break;
 
-        // start to process token
+        // Start forming token
         std::string cur_token_str(1, *iter);
 
-        // (2) is it a sep?
+        // Is the current character separator?
         if (auto sep_iter = seps.find(*iter); 
-            sep_iter != seps.end())
-        {
+            sep_iter != seps.end()) {
             std::string literal = cur_token_str;
             Token::TokenType type = sep_iter->second;
             Token _tok(type, literal, cur_line);
@@ -179,49 +173,43 @@ void Lexer::parseLine(std::string &line)
             continue;
         }
 
-        // (3) parse the token
+        // Form the token
         auto next = iter + 1;
-        while (next != line.end())
-        {
+        while (next != line.end()) {
             auto next_sep_check = seps.find(*next);
 
             if ((*next == ' ') || (next_sep_check != seps.end()))
-            {
                 break;
-            }
             cur_token_str.push_back(*next);
             next++;
             iter++;
         }
 
-        if (isType<int>(cur_token_str))
-        {
+        // Create integer or floating-point token if integer or floating-point data type
+        if (isType<int>(cur_token_str)) {
             Token::TokenType type = Token::TokenType::TOKEN_INT;
             Token _tok(type, cur_token_str, cur_line);
             toks_per_line.push(_tok);
             continue;
-        }
-        else if (isType<float>(cur_token_str))
-        {
+        } 
+        else if (isType<float>(cur_token_str)) {
             Token::TokenType type = Token::TokenType::TOKEN_FLOAT;
             Token _tok(type, cur_token_str, cur_line);
             toks_per_line.push(_tok);
             continue;
         }
 
-        // is the token keywork?
+        // Check if token is a keyword of the language, else it is an identifier
         if (auto k_iter = keywords.find(cur_token_str);
-            k_iter != keywords.end())
-        {
+            k_iter != keywords.end()) {
             std::string literal = cur_token_str;
             Token::TokenType type = k_iter->second;
             Token _tok(type, literal, cur_line);
 
             toks_per_line.push(_tok);
         }
-        else
-        {
-	    std::string literal = cur_token_str;
+        else {
+            std::string literal = cur_token_str;
             Token::TokenType type = Token::TokenType::TOKEN_IDENTIFIER;
             Token _tok(type, literal, cur_line);
 
