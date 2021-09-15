@@ -147,29 +147,28 @@ void Parser::parseProgram()
     }
 }
 
+// Parse statement as per the grammar 
 void Parser::parseStatement(std::string &cur_func_name, 
                             std::vector<std::shared_ptr<Statement>> &codes)
 {
-    // is it an if statement?
-    if (cur_token.isTokenIf())
-    {
+    // Parse if statement
+    if (cur_token.isTokenIf()) {
         auto code = parseIfStatement(cur_func_name);
         codes.push_back(std::move(code));
         return;
     }
 
-    if (cur_token.isTokenFor())
-    {
+    // Parse for statement
+    if (cur_token.isTokenFor()) {
         auto code = parseForStatement(cur_func_name);
         codes.push_back(std::move(code));
         return;
     }
 
-    // is it a function call?
+    // Parse function-call statement
     if (auto [is_def, is_built_in] = 
             isFuncDef(cur_token.getLiteral());
-        is_def)
-    {
+        is_def) {
         Statement::StatementType call_type = is_built_in ?
             Statement::StatementType::BUILT_IN_CALL_STATEMENT :
             Statement::StatementType::NORMAL_CALL_STATEMENT;
@@ -183,14 +182,12 @@ void Parser::parseStatement(std::string &cur_func_name,
         return;
     }
 
-    // it it a return statement?
-    if (cur_token.isTokenReturn())
-    {
-	advanceTokens();
-
+    // Parse return statement
+    if (cur_token.isTokenReturn()) {
+        advanceTokens();
         cur_expr_type = getFuncRetType(cur_func_name);
-        auto ret = parseExpression();
 
+        auto ret = parseExpression();
         std::unique_ptr<RetStatement> ret_statement = 
             std::make_unique<RetStatement>(ret);
 
@@ -199,10 +196,9 @@ void Parser::parseStatement(std::string &cur_func_name,
         return;
     }
 
-    // is it a variable-assignment?
+    // Parse variable-assignment statement
     if (isTokenTypeKeyword(cur_token) ||
-        cur_token.isTokenIden())
-    {
+        cur_token.isTokenIden()) {
         auto code = parseAssnStatement();
 
         codes.push_back(std::move(code));
@@ -214,6 +210,8 @@ void Parser::parseStatement(std::string &cur_func_name,
 std::unique_ptr<Statement> Parser::parseAssnStatement()
 {
     // Allocating new variables
+    // Example: int variableName;
+    // Example: float variableName;
     if (isTokenTypeKeyword(cur_token))
     {
         Token type_token = cur_token;

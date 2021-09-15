@@ -1,3 +1,8 @@
+/* Parser driver code.
+ * Author: Shihao Song
+ * Modified by: Naga Kandasamy
+ * Date: September 14, 2021
+ */
 #include "lexer/lexer.hh"
 #include "parser/parser.hh"
 
@@ -6,9 +11,8 @@
 
 using namespace Frontend;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-    // Parser
-    Parser parser(argv[1]);
+    Parser parser(argv[1]); // Instantiate Parser object
     parser.printStatements();
 }

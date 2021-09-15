@@ -1,4 +1,4 @@
-ROOT	:= ../../drexel_llvm_course
+ROOT	:= ../../compiler
 SOURCE	:= $(ROOT)/parser/main.cc 
 SOURCE	+= $(ROOT)/lexer/lexer.cc
 SOURCE 	+= $(ROOT)/parser/parser.cc
