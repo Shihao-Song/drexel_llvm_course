@@ -33,18 +33,17 @@ class ValueType
 
     ValueType() {}
 
+    // Return the type of the token 
     static Type typeTokenToValueType(Token _tok, bool is_array = false,
                                                  bool is_ptr = false)
     {
-        if (_tok.isTokenDesVoid())
-        {
+        if (_tok.isTokenDesVoid()) {
             if (is_ptr) 
                 return Type::VOID_PTR;
 	    else 
                 return Type::VOID;
         }
-        else if (_tok.isTokenDesInt())
-        {
+        else if (_tok.isTokenDesInt()) {
             if (is_array)
                 return Type::INT_ARRAY;
             else if (is_ptr)
@@ -52,8 +51,7 @@ class ValueType
             else
                 return Type::INT;
         }
-        else if (_tok.isTokenDesFloat())
-        {
+        else if (_tok.isTokenDesFloat()) {
             if (is_array)
                 return Type::FLOAT_ARRAY;
             else if (is_ptr)
@@ -61,12 +59,12 @@ class ValueType
             else
                 return Type::FLOAT;
         }
-        else
-        {
+        else {
             return Type::MAX;
         }
     }
 
+    // Return type corresponding to the string descriptor 
     static Type strToValueType(std::string _type)
     {
         if (_type == "void")
@@ -80,7 +78,7 @@ class ValueType
     }
 };
 
-/* Identifier definition */
+// Class definition for identifier 
 class Identifier
 {
   protected:
@@ -100,20 +98,20 @@ class Identifier
     auto getType() { return tok.prinTokenType(); }
 };
 
-/* Expression definition */
+// Base class definition for expression 
 class Expression
 {
   public:
     enum class ExpressionType : int
     {
-        LITERAL, // i.e., 1
+        LITERAL,    // i.e., 1
         ARRAY,
         INDEX,
 
-        PLUS, // i.e., 1 + 2
-        MINUS, // i.e., 1 - 2
-        ASTERISK, // i.e., 1 * 2
-        SLASH, // i.e., 1 / 2
+        PLUS,       // i.e., 1 + 2
+        MINUS,      // i.e., 1 - 2
+        ASTERISK,   // i.e., 1 * 2
+        SLASH,      // i.e., 1 / 2
 
         CALL,
 
@@ -143,6 +141,7 @@ class Expression
     }
 };
 
+// Class definition for a literal 
 class LiteralExpression : public Expression
 {
   protected:
@@ -172,16 +171,19 @@ class LiteralExpression : public Expression
     }
 };
 
+// Class definition for arithmetic expression 
 class ArithExpression : public Expression
 {
   protected:
-    // Unique is also good but it will incur errors when
+    // Unique pointer is also fine, but will incur errors when
     // invoking copy constructors
     std::shared_ptr<Expression> left;
     std::shared_ptr<Expression> right;
 
   public:
-    // unique can be easily converted to shared
+
+    // Constructor 
+    // Unique pointers can be easily converted to shared pointers 
     ArithExpression(std::unique_ptr<Expression> &_left,
                     std::unique_ptr<Expression> &_right,
                     ExpressionType _type)
@@ -191,6 +193,7 @@ class ArithExpression : public Expression
         type = _type;
     }
 
+    // Copy constructor 
     ArithExpression(const ArithExpression &_expr)
     {
         left = std::move(_expr.left);
@@ -201,10 +204,10 @@ class ArithExpression : public Expression
     auto getLeft() { return left.get(); }
     auto getRight() { return right.get(); }
 
+    // Returns symbol for operator
     char getOperator()
     {
-        switch(type)
-        {
+        switch(type) {
             case ExpressionType::PLUS:
                 return '+';
             case ExpressionType::MINUS:
@@ -218,16 +221,14 @@ class ArithExpression : public Expression
         }
     }
 
-    // Debug print
+    // Navigate the abstract syntax tree (AST) and print contents
     std::string print(unsigned level) override
     {
         std::string prefix(level * 2, ' ');
 
         std::string ret = "";
-        if (left != nullptr)
-        {
-            if (left->getType() == ExpressionType::LITERAL)
-            {
+        if (left != nullptr) {
+            if (left->getType() == ExpressionType::LITERAL) {
                 ret += prefix;
             }
 
@@ -237,29 +238,23 @@ class ArithExpression : public Expression
                 ret += left->print(level + 1);
         }
         
-        if (right != nullptr)
-        {
+        if (right != nullptr) {
             ret += prefix;
-            if (type == ExpressionType::PLUS)
-            {
+            if (type == ExpressionType::PLUS) {
                 ret += "+";
             }
-            else if (type == ExpressionType::MINUS)
-            {
+            else if (type == ExpressionType::MINUS) {
                 ret += "-";
             }
-            else if (type == ExpressionType::ASTERISK)
-            {
+            else if (type == ExpressionType::ASTERISK) {
                 ret += "*";
             }
-            else if (type == ExpressionType::SLASH)
-            {
+            else if (type == ExpressionType::SLASH) {
                 ret += "/";
             }
             ret += "\n";
             
-            if (right->getType() == ExpressionType::LITERAL) 
-            {
+            if (right->getType() == ExpressionType::LITERAL) {
                 ret += prefix;
             }
 
@@ -273,13 +268,16 @@ class ArithExpression : public Expression
     }
 };
 
+// Class definition for array 
 class ArrayExpression : public Expression
 {
   protected:
-    std::shared_ptr<Expression> num_ele;
-    std::vector<std::shared_ptr<Expression>> eles;
+    std::shared_ptr<Expression> num_ele;            // Number of elements in array 
+    std::vector<std::shared_ptr<Expression>> eles;  // Start of array
 
   public:
+    
+    // Constructors 
     ArrayExpression(std::unique_ptr<Expression> &_num_ele,
                     std::vector<std::shared_ptr<Expression>> &_eles)
     {

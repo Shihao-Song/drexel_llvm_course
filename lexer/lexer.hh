@@ -76,20 +76,20 @@ struct Token {
         TOKEN_FOR
     } type = TokenType::TOKEN_ILLEGAL;
 
-    // literal - container of the token value
+    // Literal - container of the token value
     std::string literal = "";
 
-    // default constructor
+    // Default constructor
     Token() {}
 
-    // alternative constructor
+    // Alternative constructor
     Token(TokenType _type)
         : type(_type)
     {
     
     }
 
-    // alternative constructor
+    // Alternative constructor
     Token(TokenType _type, std::string &_val)
         : type(_type)
         , literal(_val)
@@ -97,7 +97,7 @@ struct Token {
     
     }
 
-    // alternative constructor
+    // Alternative constructor
     Token(TokenType _type, 
           std::string &_val, 
           std::shared_ptr<std::string> &_line)
@@ -108,7 +108,7 @@ struct Token {
     
     }
 
-    // copy constructor
+    // Copy constructor
     Token(const Token &_tok)
         : type(_tok.type)
         , literal(_tok.literal)
@@ -117,7 +117,7 @@ struct Token {
     
     }
 
-    // return token type string (implemented in lexer.cc)
+    // Return token type string (implemented in lexer.cc)
     std::string prinTokenType();
 
     auto &getLiteral() { return literal; }
@@ -164,12 +164,13 @@ struct Token {
     std::string& getLine() { return *line; }
 };
 
+// Lexer class
 class Lexer
 {
   protected:
-    // define separators
+    // Define separators
     std::unordered_map<char, Token::TokenType> seps;
-    // define keywords
+    // Define keywords
     std::unordered_map<std::string, Token::TokenType> keywords;
 
   protected:
@@ -178,7 +179,7 @@ class Lexer
     std::queue<Token> toks_per_line;
 
   public:
-    Lexer(const char*);
+    Lexer(const char *);
     ~Lexer() { code.close(); };
 
     bool getToken(Token&);
@@ -186,7 +187,7 @@ class Lexer
   protected:
     void parseLine(std::string &line);
 
-    // helper function
+    // Helper function to check for data type
     template<typename T>
     bool isType(std::string &cur_token_str)
     {
