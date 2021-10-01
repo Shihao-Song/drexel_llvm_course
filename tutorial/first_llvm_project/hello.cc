@@ -7,6 +7,8 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <iostream>
+
 using namespace llvm;
 
 static cl::opt<std::string> FileName(cl::Positional,
@@ -21,20 +23,22 @@ int main(int argc, char** argv)
 
     ErrorOr<std::unique_ptr<MemoryBuffer>> mb =
         MemoryBuffer::getFile(FileName);
-    if (std::error_code ec = mb.getError())
-    {
+    if (std::error_code ec = mb.getError()) {
         errs() << ec.message();
         return -1;
     }
     Expected<std::unique_ptr<Module>> m = 
         parseBitcodeFile(mb->get()->getMemBufferRef(), context);
 
+
     for (Module::const_iterator i = m.get()->getFunctionList().begin(), 
-         e = m.get()->getFunctionList().end(); i != e; ++i) 
-    {
-        if (!i->isDeclaration())
-        {
-            outs() << i->getName() << "\n";
+         e = m.get()->getFunctionList().end(); i != e; ++i) {
+        if (!i->isDeclaration()) {
+            outs() << "Function name: " << i->getName() << "\n";
+	    // Get a reference to the function
+	    llvm::Function *func = m.get()->getFunction(i->getName());
+	    unsigned int loc = func->getInstructionCount();
+	    std::cout << "Number of lines: " << loc << "\n\n";
         }
     }
 
