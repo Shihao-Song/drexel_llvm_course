@@ -10,23 +10,23 @@ namespace Frontend
 {
 Parser::Parser(const char* fn) : lexer(new Lexer(fn))
 {
-    // Pre-load all the tokens
+    // Load tokens from Lexer
     lexer->getToken(cur_token);
     lexer->getToken(next_token);
 
-    // Fill the pre-built 
+    // Fill in the pre-built functions: printVarInt and printVarFloat 
     std::vector<ValueType::Type> arg_types;
     ValueType::Type ret_type = ValueType::Type::VOID;
     FuncRecord record;
 
-    // printVarInt
+    // printVarInt prints an integer value to stdout
     arg_types.push_back(ValueType::Type::INT);
     record.ret_type = ret_type;
     record.arg_types = arg_types;
     record.is_built_in = true;
     func_def_tracker.insert({"printVarInt", record});
 
-    // printVarFloat
+    // printVarFloat prints a floating-point value to stdout
     arg_types.clear();
     arg_types.push_back(ValueType::Type::FLOAT);
     record.ret_type = ret_type;
@@ -37,7 +37,7 @@ Parser::Parser(const char* fn) : lexer(new Lexer(fn))
     parseProgram();
 }
 
-// Advance both current and lookahead tokens
+// Advance current and lookahead tokens
 void Parser::advanceTokens()
 {
     cur_token = next_token;
@@ -117,8 +117,7 @@ void Parser::parseProgram()
                 // We are still within the function body
                 assert(cur_token.isTokenRBrace());
             }
-            else
-            {
+            else {
                 if (cur_token.isTokenRBrace())
                     break;
             }
@@ -222,11 +221,11 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
 
         recordLocalVars(cur_token, type_token, is_array);
 
-        // Build the node for the identifier on the left-hand side of the assignment statement
+        // Build node for identifier on left-hand side of assignment statement
         std::unique_ptr<Expression> iden =
             std::make_unique<LiteralExpression>(cur_token);
 
-        // Build the node for the expression on the right-hand side of the assignment statement
+        // Build node for expression on right-hand side of assignment statement
         std::unique_ptr<Expression> expr;
         
         if (!is_array) {
@@ -240,13 +239,13 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
             expr = parseArrayExpr();
         }
 
-        // Build the node for the assignment statement
+        // Build node for assignment statement
         std::unique_ptr<Statement> statement = 
             std::make_unique<AssnStatement>(iden, expr);
 
         return statement;
     }
-    else {
+    else {  // Variable must have been previously defined 
         auto [already_defined, type] = isVarAlreadyDefined(cur_token);
         if (!already_defined) {
             std::cerr << "[Error] Undefined variable of "
@@ -257,13 +256,13 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
 
         cur_expr_type = ValueType::Type::MAX;
 
-        // Build node on the left-hand side of the assignment statement 
+        // Build node on left-hand side of assignment statement 
         auto iden = parseExpression();
 
         assert(cur_token.isTokenEqual());
         advanceTokens();
 
-        // Build node on the right-hand side of the assignment statement
+        // Build node on right-hand side of assignment statement
         std::unique_ptr<Expression> expr;
         if (type == ValueType::Type::INT_ARRAY || type == ValueType::Type::FLOAT_ARRAY) {
             cur_expr_type = (type == ValueType::Type::INT_ARRAY)
@@ -276,7 +275,7 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
 
         expr = parseExpression();
         
-        // Build node for the assignment statment
+        // Build node for assignment statment
         std::unique_ptr<Statement> statement = 
             std::make_unique<AssnStatement>(iden, expr);
 
@@ -284,6 +283,7 @@ std::unique_ptr<Statement> Parser::parseAssnStatement()
     }
 }
 
+// Parse array expression 
 std::unique_ptr<Expression> Parser::parseArrayExpr()
 {
     advanceTokens();
@@ -601,23 +601,18 @@ std::unique_ptr<Statement> Parser::parseForStatement(std::string&
     return for_statement;
 }
 
-
+// Parse expression 
 std::unique_ptr<Expression> Parser::parseExpression()
 {
-    std::unique_ptr<Expression> left = parseTerm();
+    std::unique_ptr<Expression> left = parseTerm();     // Apply production rule for term to generate left node 
 
-    while (true)
-    {
-        if (cur_token.isTokenPlus() || 
-            cur_token.isTokenMinus())
-        {
+    while (true) {
+        if (cur_token.isTokenPlus() || cur_token.isTokenMinus()) {
             Expression::ExpressionType expr_type;
-            if (cur_token.isTokenPlus())
-            {
+            if (cur_token.isTokenPlus()) {
                 expr_type = Expression::ExpressionType::PLUS;
             }
-            else
-            {
+            else {
                 expr_type = Expression::ExpressionType::MINUS;
             }
 
@@ -625,9 +620,8 @@ std::unique_ptr<Expression> Parser::parseExpression()
 
             std::unique_ptr<Expression> right;
 
-            // Priority one. ()
-            if (cur_token.isTokenLP())
-            {
+            // Priority one: handle sub-expression in paranthesis ()
+            if (cur_token.isTokenLP()) {
                 right = parseTerm();
                 left = std::make_unique<ArithExpression>(left, 
                        right, 
@@ -635,49 +629,39 @@ std::unique_ptr<Expression> Parser::parseExpression()
                 continue;
             }
             
-            // Priority two. *, /
-            // check if the next token is a function call
-	    std::unique_ptr<Expression> pending_expr = nullptr;
+            // Priority two: check if next token is a function call
+            std::unique_ptr<Expression> pending_expr = nullptr;
             if (auto [is_def, is_built_in] = 
                     isFuncDef(cur_token.getLiteral());
-                    is_def)
-            {
+                    is_def) {
                 strictTypeCheck(cur_token);
                 pending_expr = parseCall();
             }
 
-            // check if the next token is an array index
+            // check if next token is an array index
             // TODO - add deref in the future
             if (bool is_index = (next_token.isTokenLBracket()) ?
                                 true : false;
-                is_index)
-            {
+                is_index) {
                 assert(pending_expr == nullptr);
                 strictTypeCheck(cur_token, is_index);
                 pending_expr = parseIndex();
             }
 
-            if (next_token.isTokenAsterisk() ||
-                next_token.isTokenSlash())
-            {
-                if (pending_expr != nullptr)
-                {
+            if (next_token.isTokenAsterisk() || next_token.isTokenSlash()) {
+                if (pending_expr != nullptr) {
                     advanceTokens();
                     right = parseTerm(std::move(pending_expr));
                 }
-                else
-                {
+                else {
                     right = parseTerm();
                 }
             }
-            else
-            {
-                if (pending_expr != nullptr)
-                {
+            else {
+                if (pending_expr != nullptr) {
                     right = std::move(pending_expr);
                 }
-                else
-                {
+                else {
                     strictTypeCheck(cur_token);
                     right = std::make_unique<LiteralExpression>(cur_token);
                 }
@@ -688,32 +672,25 @@ std::unique_ptr<Expression> Parser::parseExpression()
                        right, 
                        expr_type);
         }
-        else
-        {
+        else {
             return left;
         }
     }
 }
 
-// For Div/Mul
-std::unique_ptr<Expression> Parser::parseTerm(
-    std::unique_ptr<Expression> pending_left)
+// Parse term 
+std::unique_ptr<Expression> Parser::parseTerm(std::unique_ptr<Expression> pending_left)
 {   
     std::unique_ptr<Expression> left = 
-        (pending_left != nullptr) ? std::move(pending_left) : parseFactor();
+        (pending_left != nullptr) ? std::move(pending_left) : parseFactor(); // Parse factor 
 
-    while (true)
-    {
-        if (cur_token.isTokenAsterisk() || 
-            cur_token.isTokenSlash())
-        {
+    while (true) {
+        if (cur_token.isTokenAsterisk() || cur_token.isTokenSlash()) {
             Expression::ExpressionType expr_type;
-            if (cur_token.isTokenAsterisk())
-            {
+            if (cur_token.isTokenAsterisk()) {
                 expr_type = Expression::ExpressionType::ASTERISK;
             }
-            else
-            {
+            else {
                 expr_type = Expression::ExpressionType::SLASH;
             }
 
@@ -722,12 +699,10 @@ std::unique_ptr<Expression> Parser::parseTerm(
             std::unique_ptr<Expression> right;
 
             // We are trying to mul/div something with higher priority
-            if (cur_token.isTokenLP()) 
-            {
+            if (cur_token.isTokenLP()) {
                 right = parseTerm();
             }
-            else
-            {
+            else {
                 // TODO - add deref in the future
                 bool is_index = (next_token.isTokenLBracket()) ?
                                 true : false;
@@ -751,8 +726,7 @@ std::unique_ptr<Expression> Parser::parseTerm(
                        expr_type);
 
         }
-        else
-        {
+        else {
             break;
         }
 
@@ -761,22 +735,20 @@ std::unique_ptr<Expression> Parser::parseTerm(
     return left;
 }
 
-// Deal with () here
+// Parse factor 
 std::unique_ptr<Expression> Parser::parseFactor()
 {
     std::unique_ptr<Expression> left;
 
-    if (cur_token.isTokenMinus())
-    {
-        Expression::ExpressionType expr_type = 
-	    Expression::ExpressionType::MINUS;
+    // Unary minus operator 
+    if (cur_token.isTokenMinus()) {
+        Expression::ExpressionType expr_type = Expression::ExpressionType::MINUS;
 
 	
         Token::TokenType tok_type = (cur_expr_type == ValueType::Type::INT) ? 
                                     Token::TokenType::TOKEN_INT : 
                                     Token::TokenType::TOKEN_FLOAT;
-        std::string tok_lit = (cur_expr_type == ValueType::Type::INT) ? 
-                              "0" : "0.0";
+        std::string tok_lit = (cur_expr_type == ValueType::Type::INT) ? "0" : "0.0";
         Token zero_tok(tok_type, tok_lit);
 
         std::unique_ptr<Expression> left_expr = 
@@ -785,16 +757,13 @@ std::unique_ptr<Expression> Parser::parseFactor()
 
         std::unique_ptr<Expression> right_expr;
 
-        if (cur_token.isTokenInt() || 
-            cur_token.isTokenFloat())
-        {
+        if (cur_token.isTokenInt() || cur_token.isTokenFloat()) {
             right_expr = 
                 std::make_unique<LiteralExpression>(cur_token);
 
             advanceTokens();
         }
-        else
-        {
+        else {
             right_expr = parseFactor();
         }
 
@@ -804,8 +773,8 @@ std::unique_ptr<Expression> Parser::parseFactor()
         return left;
     }
 
-    if (cur_token.isTokenLP())
-    {
+    // Recursively parse sub-expression 
+    if (cur_token.isTokenLP()) {
         advanceTokens();
         left = parseExpression();
         assert(cur_token.isTokenRP()); // Error checking
@@ -833,44 +802,34 @@ std::unique_ptr<Expression> Parser::parseFactor()
     return left;
 }
 
-
+// Print functions for the various nodes in the AST
 void RetStatement::printStatement()
 {
     std::cout << "    {\n";
     std::cout << "      [Return]\n";
-    if (ret->getType() == Expression::ExpressionType::LITERAL)
-    {
+    if (ret->getType() == Expression::ExpressionType::LITERAL) 
         std::cout << "      " << ret->print(4);
-    }
-    else
-    {
+    else 
         std::cout << ret->print(4);
-    }
+
     std::cout << "    }\n";
 }
 
 void AssnStatement::printStatement()
 {
     std::cout << "    {\n";
-    if (iden->getType() == Expression::ExpressionType::LITERAL)
-    {
+    if (iden->getType() == Expression::ExpressionType::LITERAL) 
         std::cout << "      " << iden->print(4);
-    }
-    else
-    {
+    else 
         std::cout << iden->print(4);
-    }
 
     std::cout << "      =\n";
-    if (expr->getType() == Expression::ExpressionType::LITERAL)
-    {
+    
+    if (expr->getType() == Expression::ExpressionType::LITERAL) 
         std::cout << "      " << expr->print(4);
-    }
-    else
-    {
+    else 
         std::cout << expr->print(4);
-    }
-
+    
     std::cout << "    }\n";
 }
 
@@ -879,32 +838,24 @@ void FuncStatement::printStatement()
     std::cout << "{\n";
     std::cout << "  Function Name: " << iden->print() << "\n";
     std::cout << "  Return Type: ";
-    if (func_type == ValueType::Type::VOID)
-    {
+    if (func_type == ValueType::Type::VOID) 
         std::cout << "void\n";
-    }
-    else if (func_type == ValueType::Type::INT)
-    {
+    else if (func_type == ValueType::Type::INT) 
         std::cout << "int\n";
-    }
-    else if (func_type == ValueType::Type::FLOAT)
-    {
+    else if (func_type == ValueType::Type::FLOAT) 
         std::cout << "float\n";
-    }
 
     std::cout << "  Arguments\n";
-    for (auto &arg : args)
-    {
+    for (auto &arg : args) 
         std::cout << "    " << arg.print() << "\n";
-    }
+    
     if (!args.size()) std::cout << "    NONE\n";
 
     std::cout << "  Codes\n";
     std::cout << "  {\n";
-    for (auto &code : codes)
-    {
+    for (auto &code : codes) 
         code->printStatement();
-    }
+    
     std::cout << "  }\n";
     std::cout << "}\n";
 }
@@ -917,22 +868,21 @@ void IfStatement::printStatement()
     cond->printStatement();
     std::cout << "  [Taken Block]\n";
     std::cout << "  {\n";
-    for (auto &code : taken_block)
-    {
+    for (auto &code : taken_block) 
         code->printStatement();
-    }
+    
     std::cout << "  }\n";
-    if (not_taken_block.size() == 0)
-    {
+    
+    if (not_taken_block.size() == 0) {
         std::cout << "  }\n";
         return;
     }
+    
     std::cout << "  [Not Taken Block]\n";
     std::cout << "  {\n";
-    for (auto &code : not_taken_block)
-    {
+    for (auto &code : not_taken_block) 
         code->printStatement();
-    }
+    
     std::cout << "  }\n";
     std::cout << "  }\n";
 
@@ -951,10 +901,10 @@ void ForStatement::printStatement()
 
     std::cout << "  [Block]\n";
     std::cout << "  {\n";
-    for (auto &code : block)
-    {
+    
+    for (auto &code : block) 
         code->printStatement();
-    }
+    
     std::cout << "  }\n";
     std::cout << "  }\n";
 
@@ -968,6 +918,7 @@ void Condition::printStatement()
         std::cout << "      " << left->print(3) << "\n";
     else
         std::cout << left->print(3) << "\n";
+    
     std::cout << "    [COMP] " << opr_type_str << "\n\n";
     std::cout << "    [Right]\n";
     if (right->getType() == Expression::ExpressionType::LITERAL) 

@@ -11,7 +11,7 @@
 
 namespace Frontend
 {
-// This class helps us to track variable/function type
+// This class helps us to track variable/function types
 class ValueType
 {
   public:
@@ -21,19 +21,19 @@ class ValueType
         VOID_PTR,
 
         INT,
-        INT_ARRAY,
-        INT_PTR,
+        INT_ARRAY,      // Array of integer values
+        INT_PTR,        // Pointer to integer type
 
         FLOAT,
-        FLOAT_ARRAY,
-        FLOAT_PTR,
+        FLOAT_ARRAY,    // Array of floating-point values 
+        FLOAT_PTR,      // Pointer to floating-point type 
 
         MAX
     };
 
     ValueType() {}
 
-    // Return the type of the token 
+    // Return type of variable 
     static Type typeTokenToValueType(Token _tok, bool is_array = false,
                                                  bool is_ptr = false)
     {
@@ -98,7 +98,7 @@ class Identifier
     auto getType() { return tok.prinTokenType(); }
 };
 
-// Base class definition for expression 
+// Class definition for the base class for expression 
 class Expression
 {
   public:
@@ -141,7 +141,7 @@ class Expression
     }
 };
 
-// Class definition for a literal 
+// Class definition for literal 
 class LiteralExpression : public Expression
 {
   protected:
@@ -164,7 +164,7 @@ class LiteralExpression : public Expression
     bool isLiteralInt() { return tok.isTokenInt(); }
     bool isLiteralFloat() { return tok.isTokenFloat(); }
 
-    // Debug print associated with the print in ArithExp
+    // Debug print associated with the print in ArithExpression
     std::string print(unsigned level) override
     {
         return (tok.getLiteral() + "\n");
@@ -175,8 +175,7 @@ class LiteralExpression : public Expression
 class ArithExpression : public Expression
 {
   protected:
-    // Unique pointer is also fine, but will incur errors when
-    // invoking copy constructors
+    // Unique pointer is also fine, but will incur errors when invoking copy constructors
     std::shared_ptr<Expression> left;
     std::shared_ptr<Expression> right;
 
@@ -326,6 +325,7 @@ class ArrayExpression : public Expression
 
 };
 
+// Class definition for array index 
 class IndexExpression : public Expression
 {
   protected:
@@ -372,6 +372,7 @@ class IndexExpression : public Expression
     
 };
 
+// Class definition for a function call
 class CallExpression : public Expression
 {
   protected:
@@ -379,6 +380,8 @@ class CallExpression : public Expression
     std::vector<std::shared_ptr<Expression>> args;
 
   public:
+
+    // Constructors
     CallExpression(const CallExpression &_expr) 
     {
         def = std::move(_expr.def);
@@ -394,7 +397,7 @@ class CallExpression : public Expression
         type = ExpressionType::CALL;
     }
 
-    // Debug print associated with the print in ArithExp
+    // Print AST 
     std::string print(unsigned level) override
     {
         std::string prefix(level * 2, ' ');
@@ -402,17 +405,17 @@ class CallExpression : public Expression
         std::string ret = prefix + "{\n";
         ret += (prefix + "  [CALL] " + def->getLiteral() + "\n");
         unsigned idx = 0;
-        for (auto &arg : args)
-        {
+        for (auto &arg : args) {
             ret += (prefix + "  [ARG " + std::to_string(idx++) + "]\n");
             ret += (prefix + "  {\n");
             if (arg->getType() == Expression::ExpressionType::LITERAL)
                 ret += (prefix + "    ");
+            
             ret += arg->print(level + 2);
             ret += (prefix + "  }\n");
         }
 
-	ret += (prefix + "}\n");
+        ret += (prefix + "}\n");
         return ret;
     }
 
@@ -420,7 +423,7 @@ class CallExpression : public Expression
     auto &getArgs() { return args; }
 };
 
-/* Statement definition*/
+// Class definition for generic statement 
 class Statement
 {
   public:
@@ -447,26 +450,31 @@ class Statement
     bool isStatementFunc() { return type == StatementType::FUNC_STATEMENT; }
     bool isStatementAssn() { return type == StatementType::ASSN_STATEMENT; }
     bool isStatementRet() { return type == StatementType::RET_STATEMENT; }
+
     bool isStatementBuiltinCall() 
     {
         return type == StatementType::BUILT_IN_CALL_STATEMENT; 
     }
+    
     bool isStatementNormalCall()
     {
         return type == StatementType::NORMAL_CALL_STATEMENT;
     }
+    
     bool isStatementIf() { return type == StatementType::IF_STATEMENT; }
     bool isStatementFor() { return type == StatementType::FOR_STATEMENT; }
 };
 
+// Class definition for assignment statement
 class AssnStatement : public Statement
 {
   protected:
-    // using shared due to copy constructors
-    std::shared_ptr<Expression> iden;
-    std::shared_ptr<Expression> expr;
+	  std::shared_ptr<Expression> iden;
+	  std::shared_ptr<Expression> expr;
 
   public:
+    
+    // Constructors 
     AssnStatement(std::unique_ptr<Expression> &_iden,
                  std::unique_ptr<Expression> &_expr)
     {
@@ -489,9 +497,11 @@ class AssnStatement : public Statement
     void printStatement() override;
 };
 
+// Class definition for function definition 
 class FuncStatement : public Statement
 {
   public:
+    // Class definition for a function argument 
     class Argument
     {
       protected:
@@ -530,13 +540,11 @@ class FuncStatement : public Statement
     };
 
   protected:
-    // using shared due to copy constructors
-    ValueType::Type func_type;
-    std::shared_ptr<Identifier> iden;
-    std::vector<Argument> args;
-    std::vector<std::shared_ptr<Statement>> codes;
-
-    std::unordered_map<std::string, ValueType::Type> local_vars;
+    ValueType::Type func_type;                                      // Return type 
+    std::shared_ptr<Identifier> iden;                               // Function name 
+    std::vector<Argument> args;                                     // Argument list 
+    std::vector<std::shared_ptr<Statement>> codes;                  // Function body 
+    std::unordered_map<std::string, ValueType::Type> local_vars;    // Symbol table to store local variables 
 
   public:
     FuncStatement(ValueType::Type _type,
@@ -576,6 +584,7 @@ class FuncStatement : public Statement
     void printStatement() override;
 };
 
+// Class definition for function call
 class CallStatement : public Statement
 {
   protected:
@@ -610,6 +619,7 @@ class CallStatement : public Statement
     }
 };
 
+// Class definition for return statement
 class RetStatement : public Statement
 {
   protected:
@@ -632,9 +642,8 @@ class RetStatement : public Statement
     void printStatement() override;
 };
 
-// For if-else and for loop
-// TODO, condition may need to a vector considering situations like
-// cond_0 && cond_1
+// Class definition for condition, for selection statements and loops
+// TODO: condition may need a vector to accommodate situations like cond_0 && cond_1
 class Condition
 {
   protected:
@@ -694,6 +703,7 @@ class Condition
     void printStatement();
 };
 
+// Class definition for selection statement 
 class IfStatement : public Statement
 {    
   protected:
@@ -741,6 +751,7 @@ class IfStatement : public Statement
     void printStatement() override;
 };
 
+// Class definition for loop 
 class ForStatement : public Statement
 {    
   protected:
@@ -787,7 +798,7 @@ class ForStatement : public Statement
     void printStatement() override;
 };
 
-/* Program definition */
+// Class definition for program 
 class Program
 {
   protected:
@@ -809,7 +820,7 @@ class Program
     auto& getStatements() { return statements; }
 };
 
-/* Parser definition */
+// Class definition for parser
 class Parser
 {
   protected:
@@ -821,6 +832,7 @@ class Parser
     
   /************* Section one - record local variable types ***************/
   protected:
+    
     bool isTokenTypeKeyword(Token &_tok)
     {
         return ValueType::typeTokenToValueType(_tok) !=
@@ -833,6 +845,7 @@ class Parser
     int entering_sub_block = 0;
     std::vector<std::unordered_map<std::string,
                                    ValueType::Type>*> local_vars_tracker;
+    
     // recordLocalVars v1 - record the arguments
     void recordLocalVars(FuncStatement::Argument &arg,
                          bool is_array = false,
@@ -845,18 +858,17 @@ class Parser
         auto &tracker = local_vars_tracker.back();
 
         if (auto iter = tracker->find(arg_name);
-                iter != tracker->end())
-        {
+                iter != tracker->end()) {
             std::cerr << "[Error] recordLocalVars: "
                       << "duplicated variable definition."
                       << std::endl;
             exit(0);
         }
-        else
-        {
+        else {
             tracker->insert({arg_name, arg_type});
         }
     }
+    
     // recordLocalVars v2 - record local variables
     void recordLocalVars(Token &_tok, Token &_type_tok,
                          bool is_array = false,
@@ -869,13 +881,11 @@ class Parser
         cur_expr_type = var_type;
 
         if (cur_expr_type == ValueType::Type::INT_ARRAY ||
-            cur_expr_type == ValueType::Type::INT_PTR)
-        {
+            cur_expr_type == ValueType::Type::INT_PTR) {
             cur_expr_type = ValueType::Type::INT;
         }
         else if (cur_expr_type == ValueType::Type::FLOAT_ARRAY ||
-                 cur_expr_type == ValueType::Type::FLOAT_PTR)
-        {
+                 cur_expr_type == ValueType::Type::FLOAT_PTR) {
             cur_expr_type = ValueType::Type::FLOAT;
         }
         
@@ -883,16 +893,13 @@ class Parser
         auto &tracker = local_vars_tracker.back();
         tracker->insert({_tok.getLiteral(), var_type});
     }
+
     std::pair<bool,ValueType::Type> isVarAlreadyDefined(Token &_tok)
     {
-        for (int i = local_vars_tracker.size() - 1;
-                 i >= 0;
-                 i--)
-        {
+        for (int i = local_vars_tracker.size() - 1; i >= 0; i--) {
             auto &tracker = local_vars_tracker[i];
             if (auto iter = tracker->find(_tok.getLiteral());
-                    iter != tracker->end())
-            {
+                    iter != tracker->end()) {
                 return std::make_pair(true, iter->second);
             }
         }
@@ -900,7 +907,7 @@ class Parser
         return std::make_pair(false, ValueType::Type::MAX);
     }
 
-    /************* Section two - record function informatoin ****************/
+    // Record function information 
     struct FuncRecord
     {
         ValueType::Type ret_type;
@@ -916,7 +923,9 @@ class Parser
             , is_built_in(_record.is_built_in)
         {}
     };
+
     std::unordered_map<std::string,FuncRecord> func_def_tracker;
+    
     void recordDefs(std::string &_def,
                     ValueType::Type _type,
                     std::vector<FuncStatement::Argument> &_args)
@@ -928,8 +937,7 @@ class Parser
         record.ret_type = _type;
 
         auto &arg_types = record.arg_types;
-        for (auto &arg : _args)
-        {
+        for (auto &arg : _args) {
             arg_types.push_back(arg.getArgType());
         }
         
@@ -939,12 +947,10 @@ class Parser
     std::pair<bool,bool> isFuncDef(std::string &_def)
     {
         if (auto iter = func_def_tracker.find(_def);
-                iter != func_def_tracker.end())
-        {
+                iter != func_def_tracker.end()) {
             return std::make_pair(true, iter->second.is_built_in);
         }
-        else
-        {
+        else {
             return std::make_pair(false,false);
         }
     }
@@ -966,18 +972,18 @@ class Parser
     }
 
   protected:
-    /***************** Section two - strict type checking ******************/
 
-    // We force all the elements inside an EXPRESSION with the
-    // same type.
+    // Enforce strict type checking
+    // Force all elements inside an expression to be of same type
     ValueType::Type cur_expr_type = ValueType::Type::MAX;
-    // strictTypeCheck v1 - check the token has the same type as the
-    // cur_expr_type.
+    
+    // strictTypeCheck v1 - check the token has the same type as the cur_expr_type
     void strictTypeCheck(Token &_tok, bool is_index_or_deref = false)
     {
         if (cur_expr_type == ValueType::Type::MAX) return;
 
-	ValueType::Type tok_type = getTokenType(_tok, is_index_or_deref);
+        ValueType::Type tok_type = getTokenType(_tok, is_index_or_deref);
+        
         if (tok_type == cur_expr_type)
             return;
 
@@ -994,30 +1000,24 @@ class Parser
         else if (_tok.isTokenFloat()) tok_type = ValueType::Type::FLOAT;
         else tok_type = ValueType::Type::MAX;
 
-        // If the token is a variable, we need extract its recorded type
-        for (int i = local_vars_tracker.size() - 1;
-                 i >= 0;
-                 i--)
-        {
+        // If token is a variable, extract its recorded type
+        for (int i = local_vars_tracker.size() - 1; i >= 0; i--) {
             auto &tracker = local_vars_tracker[i];
             if (auto iter = tracker->find(_tok.getLiteral());
-                    iter != tracker->end())
-            {
+                    iter != tracker->end()) {
                 tok_type = iter->second;
                 break;
             }
         }
         
-        // If the token is function name, we need to extract its
-        // recorded type.
+        // If token is a function name, extract its recorded type
         if (auto iter = func_def_tracker.find(_tok.getLiteral());
-                iter != func_def_tracker.end())
-        {
+                iter != func_def_tracker.end()) {
             tok_type = iter->second.ret_type;
         }
-        
-        if (is_index_or_deref)
-        {
+       
+        // If dealing with array, extract its type
+        if (is_index_or_deref) {
             if (tok_type == ValueType::Type::INT_ARRAY)
                 tok_type = ValueType::Type::INT;
             else if (tok_type == ValueType::Type::FLOAT_ARRAY)
