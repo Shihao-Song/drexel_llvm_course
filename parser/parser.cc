@@ -1,7 +1,7 @@
 /* Implementation of recursive-descent parser.
  * Author: Shihao Song
  * Modified by: Naga Kandasamy
- * Date modified: September 15, 2021
+ * Date modified: October 4, 2021
  */
 
 #include "parser/parser.hh"
