@@ -457,6 +457,7 @@ std::unique_ptr<Condition> Parser::parseCondition()
     return cond;
 }
 
+// Parse if-else statement 
 std::unique_ptr<Statement> Parser::parseIfStatement(std::string& 
                                                     parent_func_name)
 {
@@ -464,6 +465,8 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
     assert(cur_token.isTokenLP());
 
     advanceTokens();
+
+    // Parse the Boolean condition 
     auto cond = parseCondition();
 
     // Parse taken block
@@ -473,27 +476,26 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
     std::vector<std::shared_ptr<Statement>> taken_block_codes;
     std::unordered_map<std::string,ValueType::Type> taken_block_local_vars;
     local_vars_tracker.push_back(&taken_block_local_vars);
-    while (true)
-    {
+    while (true) {
         advanceTokens();
         if (cur_token.isTokenRBrace())
             break;
 
         parseStatement(parent_func_name, taken_block_codes);
-        // We just finished an if/for statement
+
+        // Check if we just finished an if/for statement
         if (taken_block_codes.back()->isStatementIf() ||
-            taken_block_codes.back()->isStatementFor())
-        {
+            taken_block_codes.back()->isStatementFor()) {
             // This RBrace is from the statement,
             // should not terminate.
             assert(cur_token.isTokenRBrace());
         }
-        else
-        {
+        else {
             if (cur_token.isTokenRBrace())
                 break;
         }
     }
+    
     assert(cur_token.isTokenRBrace());
     local_vars_tracker.pop_back();
 
@@ -502,13 +504,11 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
     std::unordered_map<std::string,
                        ValueType::Type> not_taken_block_local_vars;
 
-    if (next_token.isTokenElse())
-    {
+    if (next_token.isTokenElse()) {
         advanceTokens();
         local_vars_tracker.push_back(&not_taken_block_local_vars);
         advanceTokens();
-        while (true)
-        {
+        while (true) {
             advanceTokens();
             if (cur_token.isTokenRBrace())
                 break;
@@ -516,14 +516,12 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
             parseStatement(parent_func_name, not_taken_block_codes);
             // We just finished an if/for statement
             if (not_taken_block_codes.back()->isStatementIf() ||
-                not_taken_block_codes.back()->isStatementFor())
-            {
+                not_taken_block_codes.back()->isStatementFor()) {
                 // This RBrace is from the statement,
                 // should not terminate.
                 assert(cur_token.isTokenRBrace());
             }
-            else
-            {
+            else {
                 if (cur_token.isTokenRBrace())
                     break;
             }
