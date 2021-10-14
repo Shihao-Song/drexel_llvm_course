@@ -201,8 +201,11 @@ void Parser::parseStatement(std::string &cur_func_name,
 std::unique_ptr<Statement> Parser::parseAssnStatement()
 {
     // Allocating new variables
-    // Example: int variableName;
-    // Example: float variableName;
+    // Example: int variableName = value;
+    // Example: float variableName = value; 
+
+    // FIXME: add code to accommodate int variableName;
+
     if (isTokenTypeKeyword(cur_token)) {
         Token type_token = cur_token;
 
@@ -290,29 +293,29 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
     assert(cur_token.isTokenLBracket());
 
     advanceTokens();
-    // num_ele must be an integer
+    // num_ele, the number of elements, must be an integer
     auto swap = cur_expr_type;
     cur_expr_type = ValueType::Type::INT;
     auto num_ele = parseExpression();
     cur_expr_type = swap;
-    if (!(num_ele->isExprLiteral()))
-    {
+    if (!(num_ele->isExprLiteral())) {
         std::cerr << "[Error] Number of array elements "
                   << "must be a single integer. \n"
                   << "[Line] " << cur_token.getLine() << "\n";
         exit(0);
     }
+
     auto num_ele_lit = static_cast<LiteralExpression*>(num_ele.get());
-    if (!(num_ele_lit->isLiteralInt()))
-    {
+    
+    if (!(num_ele_lit->isLiteralInt())) {
         std::cerr << "[Error] Number of array elements "
                   << "must be a single integer. \n"
                   << "[Line] " << cur_token.getLine() << "\n";
         exit(0);
     }
+
     int num_eles_int = stoi(num_ele_lit->getLiteral());
-    if (num_eles_int <= 1)
-    {
+    if (num_eles_int <= 1) {
         std::cerr << "[Error] Number of array elements "
                   << "must be larger than 1. \n"
                   << "[Line] " << cur_token.getLine() << "\n";
@@ -328,19 +331,16 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
     assert(cur_token.isTokenLBrace());
 
     std::vector<std::shared_ptr<Expression>> eles;
-    if (!next_token.isTokenRBrace())
-    {
+    if (!next_token.isTokenRBrace()) {
         advanceTokens();
-        while (!cur_token.isTokenRBrace())
-        {
+        while (!cur_token.isTokenRBrace()) {
             eles.push_back(parseExpression());
             if (cur_token.isTokenComma())
                 advanceTokens();
         }
 
         // We make sure consistent number of elements
-        if (num_eles_int != eles.size())
-        {
+        if (num_eles_int != eles.size()) {
             std::cerr << "[Error] Accpeted format: "
                       << "(1) pre-allocation style - array<int> x[10] = {} "
                       << "(2) #initials == #elements - "
@@ -349,8 +349,7 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
             exit(0);
         }
     }
-    else
-    {
+    else {
         advanceTokens();
     }
 
@@ -362,6 +361,7 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
     return ret;
 }
 
+// Parse array index 
 std::unique_ptr<Expression> Parser::parseIndex()
 {
     std::unique_ptr<Identifier> iden(new Identifier(cur_token));
@@ -423,6 +423,7 @@ std::unique_ptr<Expression> Parser::parseCall()
     return ret;
 }
 
+// Parse Boolean condition 
 std::unique_ptr<Condition> Parser::parseCondition()
 {
     // The type must be consistent
@@ -431,22 +432,21 @@ std::unique_ptr<Condition> Parser::parseCondition()
                     true : false;
     cur_expr_type = getTokenType(cur_token, is_index);
 
-    // Left condition
+    // Parse left-hand side 
     auto cond_left = parseExpression();
 
-    // Comp operator
+    // Get the relational operator 
     std::string comp_opr_str = cur_token.getLiteral();
-    if (next_token.isTokenEqual())
-    {
+    if (next_token.isTokenEqual()) {
         comp_opr_str += next_token.getLiteral();
         advanceTokens();
     }
 
-    // Right condition
+    // Parse right-hand side 
     advanceTokens();
     auto cond_right = parseExpression();
 
-    // Build up the condition object
+    // Build condition object
     std::unique_ptr<Condition> cond = 
         std::make_unique<Condition>(cond_left,
                                     cond_right,
@@ -541,6 +541,7 @@ std::unique_ptr<Statement> Parser::parseIfStatement(std::string&
     return if_statement;
 }
 
+// Parse for statement 
 std::unique_ptr<Statement> Parser::parseForStatement(std::string& 
                                                      parent_func_name)
 {
@@ -564,8 +565,7 @@ std::unique_ptr<Statement> Parser::parseForStatement(std::string&
     advanceTokens();
     assert(cur_token.isTokenLBrace());
 
-    while (true)
-    {
+    while (true) {
         advanceTokens();
         if (cur_token.isTokenRBrace())
             break;
@@ -573,14 +573,12 @@ std::unique_ptr<Statement> Parser::parseForStatement(std::string&
         parseStatement(parent_func_name, block);
         // We just finished an if/for statement
         if (block.back()->isStatementIf() ||
-            block.back()->isStatementFor())
-        {
+            block.back()->isStatementFor()) {
             // This RBrace is from the statement,
             // should not terminate.
             assert(cur_token.isTokenRBrace());
         }
-        else
-        {
+        else {
             if (cur_token.isTokenRBrace())
                 break;
         }
