@@ -4,7 +4,7 @@ SOURCE	+= $(ROOT)/lexer/lexer.cc
 SOURCE 	+= $(ROOT)/parser/parser.cc
 SOURCE	+= $(ROOT)/codegen/codegen.cc
 CC	:= clang++
-FLAGS	:= -g -O3 -std=c++17 -w 
+FLAGS	:= -g -O3 -std=c++17 -w -v 
 FLAGS	+= -I $(ROOT)
 FLAGS	+= `llvm-config --cxxflags`
 TARGET	:= codegen

@@ -65,13 +65,11 @@ class Codegen
     {
         for (int i = local_vars_ref.size() - 1;
                  i >= 0;
-                 i--)
-        {
+                 i--) {
             auto &ref = local_vars_ref[i];
 
             if (auto iter = ref->find(_var_name);
-                    iter != ref->end())
-            {
+                    iter != ref->end()) {
                 return iter->second;
             }
         }
@@ -81,13 +79,11 @@ class Codegen
     {
         for (int i = local_vars_tracker.size() - 1;
                  i >= 0;
-                 i--)
-        {
+                 i--) {
             auto &tracker = local_vars_tracker[i];
 
             if (auto iter = tracker.find(_var_name);
-                    iter != tracker.end())
-            {
+                    iter != tracker.end()) {
                 return std::make_pair(true,iter->second);
             }
         }

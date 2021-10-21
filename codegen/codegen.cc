@@ -4,6 +4,9 @@ namespace Frontend
 {
 void Codegen::gen()
 {
+    /* Create LLVM context. 
+       A context is an execution state for the core LLVM IR system
+    */
     context = std::make_unique<LLVMContext>();
     module = std::make_unique<Module>(mod_name, *context);
 
@@ -14,20 +17,21 @@ void Codegen::gen()
     auto &program = parser->getProgram();
     auto &statements = program.getStatements();
 
-    for (auto &statement : statements)
-    {
+    // Iterarate over each function and generate IR code 
+    for (auto &statement : statements) {
         assert(statement->isStatementFunc());
         funcGen(statement.get());
 
     }
 }
 
+// Generate code for function 
 void Codegen::funcGen(Statement *_statement)
 {
     FuncStatement *func_statement = 
         static_cast<FuncStatement*>(_statement);
 
-    // We need to extract the local variables reference
+    // Extract the local variables reference
     local_vars_ref.push_back(func_statement->getLocalVars());
     local_vars_tracker.emplace_back();
 
@@ -35,11 +39,9 @@ void Codegen::funcGen(Statement *_statement)
     auto& func_args = func_statement->getFuncArgs();
     auto& func_codes = func_statement->getFuncCodes();
 
-    // IR Gen
-    // Prepare argument types
+    // IR Generation: prepare argument types
     std::vector<Type *> ir_gen_func_args;
-    for (auto &arg : func_args)
-    {
+    for (auto &arg : func_args) {
         if (arg.getArgType() == ValueType::Type::INT)
             ir_gen_func_args.push_back(Type::getInt32Ty(*context));
         else if (arg.getArgType() == ValueType::Type::FLOAT)
@@ -85,34 +87,30 @@ void Codegen::funcGen(Statement *_statement)
     std::vector<ValueType::Type> func_arg_types;
     if (ir_gen_func->arg_size())
         func_arg_types = parser->getFuncArgTypes(func_name);
-    for (auto &arg : ir_gen_func->args())
-    {
+    
+    for (auto &arg : ir_gen_func->args()) {
         Value *val = &arg;
         Value *reg;
 
-        if (func_arg_types[i] == ValueType::Type::INT)
-        {
+        if (func_arg_types[i] == ValueType::Type::INT) {
             reg = builder->CreateAlloca(Type::getInt32Ty(*context));
             builder->CreateStore(val, reg);
-	}
-        else if (func_arg_types[i] == ValueType::Type::FLOAT)
-        {
+        }
+        else if (func_arg_types[i] == ValueType::Type::FLOAT) {
             reg = builder->CreateAlloca(Type::getFloatTy(*context));
             builder->CreateStore(val, reg);
-	}
+        }
 
         recordLocalVar(func_args[i].getLiteral(), reg);
         i++;
     }
 
     // (2) Rest of the codes
-    for (auto &statement : func_codes)
-    {
+    for (auto &statement : func_codes) {
         statementGen(func_name, statement.get());
     }
 
-    if (func_statement->getRetType() == ValueType::Type::VOID)
-    {
+    if (func_statement->getRetType() == ValueType::Type::VOID) {
         Value *val = nullptr;
         builder->CreateRet(val);
     }
@@ -124,35 +122,31 @@ void Codegen::funcGen(Statement *_statement)
     local_vars_ref.pop_back();
 }
 
+// Generate code for various statements 
 void Codegen::statementGen(std::string &func_name,
                            Statement* statement)
 {
-    if (statement->isStatementAssn())
-    {
+    if (statement->isStatementAssn()) {
         assnGen(statement);
     }
-    else if (statement->isStatementBuiltinCall())
-    {
+    else if (statement->isStatementBuiltinCall()) {
         builtinGen(statement);
     }
-    else if (statement->isStatementRet())
-    {
+    else if (statement->isStatementRet()) {
         retGen(func_name, statement);
     }
-    else if (statement->isStatementNormalCall())
-    {
+    else if (statement->isStatementNormalCall()) {
         callGen(statement);
     }
-    else if (statement->isStatementIf())
-    {
+    else if (statement->isStatementIf()) {
         ifGen(func_name, statement);
     }
-    else if (statement->isStatementFor())
-    {
+    else if (statement->isStatementFor()) {
         forGen(func_name, statement);
     }
 }
 
+// Generate code for assignment statement 
 void Codegen::assnGen(Statement *_statement)
 {
     AssnStatement* assn_statement = 
@@ -176,12 +170,10 @@ void Codegen::assnGen(Statement *_statement)
 
     // Extract assigned value    
     Value *val = nullptr;
-    if (array_info != nullptr)
-    {
+    if (array_info != nullptr) {
         arrayExprGen(var_type, reg, array_info);
     }
-    else
-    {
+    else {
         val = exprGen(var_type, expr);
         builder->CreateStore(val, reg);
     }
@@ -195,8 +187,7 @@ Value* Codegen::allocaForIden(std::string &var_name,
     // We need to make sure the variable has not been allocated before
 
     // Determine identifier type
-    if (iden->isExprLiteral())
-    {
+    if (iden->isExprLiteral()) {
         LiteralExpression *lit = 
             static_cast<LiteralExpression*>(iden);
 
@@ -545,28 +536,20 @@ Value* Codegen::exprGen(ValueType::Type _var_type, Expression *expr)
         var_type = ValueType::Type::FLOAT;
 
     Value *val = nullptr;
-    if (expr->isExprLiteral())
-    {
-        LiteralExpression* lit = static_cast<LiteralExpression*>(expr);
-
+    if (expr->isExprLiteral()) {
+        LiteralExpression* lit = static_cast<LiteralExpression *>(expr);
         val = literalExprGen(var_type, lit);
     }
-    else if (expr->isExprArith())
-    {
+    else if (expr->isExprArith()) {
         ArithExpression *arith = static_cast<ArithExpression *>(expr);
-
         val = arithExprGen(var_type, arith);        
     }
-    else if (expr->isExprIndex())
-    {
+    else if (expr->isExprIndex()) {
         IndexExpression *index = static_cast<IndexExpression*>(expr);
-
         val = indexExprGen(var_type, index);
     }
-    else if (expr->isExprCall())
-    {
+    else if (expr->isExprCall()) {
         CallExpression *call = static_cast<CallExpression*>(expr);
-
         val = callExprGen(call);
     }
 
@@ -580,36 +563,31 @@ Value* Codegen::literalExprGen(ValueType::Type type,
     Value *val;
     auto [is_allocated, reg_val] = getReg(lit->getLiteral());
 
-    if (!is_allocated)
-    {
+    if (!is_allocated) {
         assert((lit->isLiteralInt() || 
                 lit->isLiteralFloat()));
 
         auto val_str = lit->getLiteral();
-        if (lit->isLiteralInt())
-        {
+        if (lit->isLiteralInt()) {
             val = ConstantInt::get(*context, APInt(32, stoi(val_str)));
         }
-        else if (lit->isLiteralFloat())
-        {
+        else if (lit->isLiteralFloat()) {
             val = ConstantFP::get(*context, APFloat(stof(val_str)));
         }
     }
-    else
-    {
-        if (type == ValueType::Type::INT)
-        {
+    else {
+        if (type == ValueType::Type::INT) {
             val = builder->CreateLoad(Type::getInt32Ty(*context),
                                       reg_val);
             
         }
-        else if (type == ValueType::Type::FLOAT)
-        {
+        else if (type == ValueType::Type::FLOAT) {
             val = builder->CreateLoad(Type::getFloatTy(*context),
                                       reg_val);
             
         }
     }
+
     assert(val != nullptr);
     return val;
 }
@@ -639,12 +617,10 @@ void Codegen::arrayExprGen(ValueType::Type array_type,
     auto cnt = 0;
     auto last_ele_idx = array_info->getElements().size() - 1;
     auto const_one = ConstantInt::get(*context, APInt(32, 1));
-    for (auto ele : array_info->getElements())
-    {
+    for (auto ele : array_info->getElements()) {
         Value *val = exprGen(type, ele.get());
         builder->CreateStore(val, base);
-        if (++cnt <= last_ele_idx)
-        {
+        if (++cnt <= last_ele_idx) {
             // increment one to the base
             base = builder->CreateInBoundsGEP(base, const_one); 
         }
@@ -658,11 +634,9 @@ Value* Codegen::arithExprGen(ValueType::Type type,
     Value *val_right = nullptr;
 
     // Recursively generate the left arith expr
-    if (arith->getLeft() != nullptr)
-    {
+    if (arith->getLeft() != nullptr) {
         Expression *next_expr = arith->getLeft();
-        if (next_expr->isExprArith())
-        {
+        if (next_expr->isExprArith()) {
             ArithExpression* next_arith = 
                 static_cast<ArithExpression*>(next_expr);
             val_left = arithExprGen(type, 
@@ -671,11 +645,9 @@ Value* Codegen::arithExprGen(ValueType::Type type,
     }
 
     // Recursively generate the right arith expr
-    if (arith->getRight() != nullptr)
-    {
+    if (arith->getRight() != nullptr) {
         Expression *next_expr = arith->getRight();
-        if (next_expr->isExprArith())
-        {
+        if (next_expr->isExprArith()) {
             ArithExpression* next_arith = 
                 static_cast<ArithExpression*>(next_expr);
             val_right = arithExprGen(type,
@@ -683,8 +655,7 @@ Value* Codegen::arithExprGen(ValueType::Type type,
         }
     }
 
-    if (val_left == nullptr)
-    {
+    if (val_left == nullptr) {
         Expression *left_expr = arith->getLeft();
 
         assert((left_expr->isExprLiteral() || 
@@ -694,12 +665,11 @@ Value* Codegen::arithExprGen(ValueType::Type type,
         val_left = exprGen(type, left_expr);
     }
 
-    if (val_right == nullptr)
-    {
+    if (val_right == nullptr) {
         Expression *right_expr = arith->getRight();
 
         // The right_expr must either be literal or call
-	assert((right_expr->isExprLiteral() || 
+        assert((right_expr->isExprLiteral() || 
                 right_expr->isExprCall() ||
                 right_expr->isExprIndex()));
 
@@ -712,8 +682,7 @@ Value* Codegen::arithExprGen(ValueType::Type type,
     // Generate operators
     auto opr = arith->getOperator();
 
-    switch (opr) 
-    {
+    switch (opr) {
         case '+':
             if (type == ValueType::Type::INT)
                 return builder->CreateAdd(val_left, val_right);
