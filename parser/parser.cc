@@ -341,10 +341,9 @@ std::unique_ptr<Expression> Parser::parseArrayExpr()
 
         // We make sure consistent number of elements
         if (num_eles_int != eles.size()) {
-            std::cerr << "[Error] Accpeted format: "
-                      << "(1) pre-allocation style - array<int> x[10] = {} "
+            std::cerr << "[Error] Number of elements does not match array size: "
+                      << "(1) pre-allocation style - int x[5] = {1, 2, 3, 4, 5}"
                       << "(2) #initials == #elements - "
-                      << "array<int> x[2] = {1, 2} \n"
                       << "[Line] " << cur_token.getLine() << "\n";
             exit(0);
         }

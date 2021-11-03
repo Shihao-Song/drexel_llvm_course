@@ -5,7 +5,7 @@ int expr0(int x, int y)
 {
 	int a = 4 * x + (x - y) * (x + y);
 	int b = 3 * (x + (x - y) * 3) * 4;
-	int c = a + b;
+	int c = -a -b;
 	return c;
 }
 
@@ -24,10 +24,10 @@ int main()
     int z1 = expr0(x1, y1);
 	printVarInt(z1);
 
-    float x2 = 1.2;
-    float y2 = 2.3;
-    float z2 = expr1(x2, y2);
-    printVarFloat(z2);
+    // float x2 = 1.2;
+    // float y2 = 2.3;
+    // float z2 = expr1(x2, y2);
+    // printVarFloat(z2);
 
     return 0;
 }
