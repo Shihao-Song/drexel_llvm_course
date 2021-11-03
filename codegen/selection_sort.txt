@@ -1,7 +1,7 @@
 int main()
 {
     // Initialize a unsorted array
-    int arr[10] = {64, 124, 25, 8, 12, 22, 11, 207, 2, 79};
+    int arr[10] = {200, 124, 25, 8, 12, 22, 11, 207, 2, 79};
 
     int len = 10;
     for (int i = 0; i < len; i = i + 1)
