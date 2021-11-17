@@ -1,3 +1,6 @@
+// sum = 1 + 2 + 3 + ... + n 
+// Author: Naga Kandasamy 
+
 int series_sum(int n)
 {
     int sum = 0;
