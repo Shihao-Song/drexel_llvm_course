@@ -1,0 +1,24 @@
+int my_max(int a, int b)
+{
+    int max = 0;
+    if (a > b) { 
+        max = a;
+    }
+    else {
+        max = b;
+    }
+
+    return max;
+}
+
+int main()
+{
+    int a = 10;
+    int b = 20;
+    int c = 0;
+
+    c = my_max(a, b);
+    printVarInt(c);
+
+    return 0;
+}
