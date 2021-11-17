@@ -11,8 +11,9 @@ void Codegen::gen()
     module = std::make_unique<Module>(mod_name, *context);
 
     /* Create a new builder for the module to fill basic blocks of functions with LLVM instructions. 
-       IRBuilder internally maintains a current basic block and a pointer inside the block’s list of instructions. 
-       When a new instruction is added, it is inserted at that point, and then the pointer is advanced after the new instruction.
+       IRBuilder internally maintains a current basic block and a pointer inside the block's list of instructions. 
+       When a new instruction is added, it is inserted at that point, and then the pointer is advanced 
+       after the new instruction.
     */
     builder = std::make_unique<IRBuilder<>>(*context);
 
@@ -475,7 +476,7 @@ void Codegen::forGen(std::string& parent_func_name, Statement *_statement)
     BasicBlock *body_BB =
         BasicBlock::Create(*context, "", func);
 
-    // Basic block to break out of loop
+    // Basic block the occurs after loop is done
     BasicBlock *merge_BB =
         BasicBlock::Create(*context, "", func);
 
